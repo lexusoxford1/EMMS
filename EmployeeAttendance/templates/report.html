@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Attendance Report</h2>
+
+<form method="get">
+    <label>Select Month</label>
+    <input type="month" name="month" value="{{ request.GET.month }}">
+    <button type="submit">Filter</button>
+</form>
+
+<br>
+<a href="{% url 'export_excel' %}?month={{ request.GET.month }}" class="btn">Export Excel</a>
+<a href="{% url 'export_pdf' %}?month={{ request.GET.month }}" class="btn">Export PDF</a>
+
+<table>
+    <tr>
+        <th>Employee ID</th>
+        <th>Name</th>
+        <th>Department</th>
+        <th>Check In</th>
+        <th>Check Out</th>
+        <th>Worked Hours</th>
+    </tr>
+    {% for a in attendances %}
+    <tr>
+        <td>{{ a.employee.employee_id }}</td>
+        <td>{{ a.employee.name }}</td>
+        <td>{{ a.employee.department }}</td>
+        <td>{{ a.check_in_time }}</td>
+        <td>{{ a.check_out_time|default:"-" }}</td>
+        <td>{{ a.worked_hours }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Attendance</h2>
+
+{% if not is_admin_view %}
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" name="action" value="checkin">Check In</button>
+    <button type="submit" name="action" value="checkout">Check Out</button>
+</form>
+{% endif %}
+
+<h3>Today's Attendance</h3>
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Check In</th>
+        <th>Check Out</th>
+        <th>Worked Hours</th>
+    </tr>
+    {% for record in today_records %}
+    <tr>
+        <td>{{ record.employee.name }}</td>
+        <td>{{ record.check_in_time }}</td>
+        <td>{{ record.check_out_time|default:"-" }}</td>
+        <td>{{ record.worked_hours }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="4">No attendance records for today.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if not is_admin_view %}
+<h3>My History</h3>
+<table>
+    <tr>
+        <th>Date</th>
+        <th>Check In</th>
+        <th>Check Out</th>
+        <th>Worked Hours</th>
+    </tr>
+    {% for record in my_history %}
+    <tr>
+        <td>{{ record.created_at|date:"Y-m-d" }}</td>
+        <td>{{ record.check_in_time }}</td>
+        <td>{{ record.check_out_time|default:"-" }}</td>
+        <td>{{ record.worked_hours }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="4">No attendance history found.</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

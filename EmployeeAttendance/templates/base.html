@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EMMS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        nav a {
+            margin-right: 15px;
+            text-decoration: none;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 15px;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        .msg {
+            padding: 10px;
+            margin: 10px 0;
+            background: #f1f1f1;
+        }
+        .btn {
+            padding: 8px 12px;
+            text-decoration: none;
+            border: 1px solid #000;
+            background: #eee;
+            display: inline-block;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <nav>
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        {% if user.is_superuser %}
+            <a href="{% url 'employee_list' %}">Employees</a>
+            <a href="{% url 'report_view' %}">Reports</a>
+        {% endif %}
+        <a href="{% url 'attendance' %}">Attendance</a>
+        <a href="{% url 'leave_list' %}">Leaves</a>
+        <a href="{% url 'logout' %}">Logout</a>
+    </nav>
+    {% endif %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="msg">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</body>
+</html>
