@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Add Employee</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save</button>
-</form>
+<section class="content-card">
+    <h2>Add Employee</h2>
+    <p class="muted">Create a new employee profile for attendance and leave tracking.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="actions">
+            <button type="submit">Save Employee</button>
+            <a href="{% url 'employee_list' %}" class="btn btn-soft">Back to List</a>
+        </div>
+    </form>
+</section>
 {% endblock %}

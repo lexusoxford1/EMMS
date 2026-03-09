@@ -1,23 +1,34 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Employee List</h2>
-<a href="{% url 'employee_add' %}" class="btn">Add Employee</a>
+<section class="content-card">
+    <h2>Employee List</h2>
+    <p class="muted">Manage employee profiles and account assignments.</p>
+    <div class="actions">
+        <a href="{% url 'employee_add' %}" class="btn">Add Employee</a>
+    </div>
 
-<table>
-    <tr>
-        <th>Employee ID</th>
-        <th>Name</th>
-        <th>Department</th>
-        <th>Username</th>
-    </tr>
-    {% for employee in employees %}
-    <tr>
-        <td>{{ employee.employee_id }}</td>
-        <td>{{ employee.name }}</td>
-        <td>{{ employee.department }}</td>
-        <td>{{ employee.user.username }}</td>
-    </tr>
-    {% endfor %}
-</table>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Username</th>
+            </tr>
+            {% for employee in employees %}
+            <tr>
+                <td>{{ employee.employee_id }}</td>
+                <td>{{ employee.name }}</td>
+                <td>{{ employee.department }}</td>
+                <td>{{ employee.user.username|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">No employees found.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
 {% endblock %}

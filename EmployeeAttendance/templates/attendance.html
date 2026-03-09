@@ -1,59 +1,122 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Attendance</h2>
-
 {% if not is_admin_view %}
-<form method="post">
-    {% csrf_token %}
-    <button type="submit" name="action" value="checkin">Check In</button>
-    <button type="submit" name="action" value="checkout">Check Out</button>
-</form>
+<section class="content-card">
+    <h2>My Attendance Today</h2>
+    <p class="muted">Use the button below to record your next attendance step.</p>
+
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Morning In</th>
+                <th>Morning Out</th>
+                <th>Afternoon In</th>
+                <th>Afternoon Out</th>
+                <th>Total Hours</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>{{ record.morning_in|date:"Y-m-d h:i A"|default:"-" }}</td>
+                <td>{{ record.morning_out|date:"Y-m-d h:i A"|default:"-" }}</td>
+                <td>{{ record.afternoon_in|date:"Y-m-d h:i A"|default:"-" }}</td>
+                <td>{{ record.afternoon_out|date:"Y-m-d h:i A"|default:"-" }}</td>
+                <td>{{ record.total_hours }}</td>
+                <td>
+                    <span class="status {% if record.attendance_status == 'Completed' %}completed{% elif record.attendance_status == 'Overtime' %}overtime{% else %}undertime{% endif %}">
+                        {{ record.attendance_status }}
+                    </span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="actions">
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit">
+                {% if not record.morning_in %}
+                    Morning In
+                {% elif not record.morning_out %}
+                    Morning Out
+                {% elif not record.afternoon_in %}
+                    Afternoon In
+                {% elif not record.afternoon_out %}
+                    Afternoon Out
+                {% else %}
+                    Completed
+                {% endif %}
+            </button>
+        </form>
+    </div>
+</section>
 {% endif %}
 
-<h3>Today's Attendance</h3>
-<table>
-    <tr>
-        <th>Name</th>
-        <th>Check In</th>
-        <th>Check Out</th>
-        <th>Worked Hours</th>
-    </tr>
-    {% for record in today_records %}
-    <tr>
-        <td>{{ record.employee.name }}</td>
-        <td>{{ record.check_in_time }}</td>
-        <td>{{ record.check_out_time|default:"-" }}</td>
-        <td>{{ record.worked_hours }}</td>
-    </tr>
-    {% empty %}
-    <tr>
-        <td colspan="4">No attendance records for today.</td>
-    </tr>
-    {% endfor %}
-</table>
+<section class="content-card">
+    <h2>Today's Attendance Records</h2>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Morning In</th>
+                <th>Morning Out</th>
+                <th>Afternoon In</th>
+                <th>Afternoon Out</th>
+                <th>Total Hours</th>
+                <th>Status</th>
+            </tr>
+            {% for item in today_records %}
+            <tr>
+                <td>{{ item.employee.name }}</td>
+                <td>{{ item.morning_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.morning_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.afternoon_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.afternoon_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.total_hours }}</td>
+                <td>
+                    <span class="status {% if item.attendance_status == 'Completed' %}completed{% elif item.attendance_status == 'Overtime' %}overtime{% else %}undertime{% endif %}">
+                        {{ item.attendance_status }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">No attendance records for today.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
 
 {% if not is_admin_view %}
-<h3>My History</h3>
-<table>
-    <tr>
-        <th>Date</th>
-        <th>Check In</th>
-        <th>Check Out</th>
-        <th>Worked Hours</th>
-    </tr>
-    {% for record in my_history %}
-    <tr>
-        <td>{{ record.created_at|date:"Y-m-d" }}</td>
-        <td>{{ record.check_in_time }}</td>
-        <td>{{ record.check_out_time|default:"-" }}</td>
-        <td>{{ record.worked_hours }}</td>
-    </tr>
-    {% empty %}
-    <tr>
-        <td colspan="4">No attendance history found.</td>
-    </tr>
-    {% endfor %}
-</table>
+<section class="content-card">
+    <h2>My History</h2>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Morning In</th>
+                <th>Morning Out</th>
+                <th>Afternoon In</th>
+                <th>Afternoon Out</th>
+                <th>Total Hours</th>
+            </tr>
+            {% for item in my_history %}
+            <tr>
+                <td>{{ item.date }}</td>
+                <td>{{ item.morning_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.morning_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.afternoon_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.afternoon_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.total_hours }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No attendance history found.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
 {% endif %}
 {% endblock %}

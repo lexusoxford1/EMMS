@@ -1,36 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Attendance Report</h2>
+<section class="content-card">
+    <h2>Attendance Report</h2>
+    <p class="muted">Filter by month, then export to Excel or PDF.</p>
 
-<form method="get">
-    <label>Select Month</label>
-    <input type="month" name="month" value="{{ request.GET.month }}">
-    <button type="submit">Filter</button>
-</form>
+    <form method="get" class="actions">
+        <label for="month" class="muted">Select Month</label>
+        <input id="month" type="month" name="month" value="{{ request.GET.month }}">
+        <button type="submit">Apply Filter</button>
+    </form>
 
-<br>
-<a href="{% url 'export_excel' %}?month={{ request.GET.month }}" class="btn">Export Excel</a>
-<a href="{% url 'export_pdf' %}?month={{ request.GET.month }}" class="btn">Export PDF</a>
+    <div class="actions">
+        <a href="{% url 'export_excel' %}?month={{ request.GET.month }}" class="btn">Export Excel</a>
+        <a href="{% url 'export_pdf' %}?month={{ request.GET.month }}" class="btn btn-soft">Export PDF</a>
+    </div>
 
-<table>
-    <tr>
-        <th>Employee ID</th>
-        <th>Name</th>
-        <th>Department</th>
-        <th>Check In</th>
-        <th>Check Out</th>
-        <th>Worked Hours</th>
-    </tr>
-    {% for a in attendances %}
-    <tr>
-        <td>{{ a.employee.employee_id }}</td>
-        <td>{{ a.employee.name }}</td>
-        <td>{{ a.employee.department }}</td>
-        <td>{{ a.check_in_time }}</td>
-        <td>{{ a.check_out_time|default:"-" }}</td>
-        <td>{{ a.worked_hours }}</td>
-    </tr>
-    {% endfor %}
-</table>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Morning In</th>
+                <th>Morning Out</th>
+                <th>Afternoon In</th>
+                <th>Afternoon Out</th>
+                <th>Total Hours</th>
+            </tr>
+
+            {% for a in attendances %}
+            <tr>
+                <td>{{ a.date }}</td>
+                <td>{{ a.employee.employee_id }}</td>
+                <td>{{ a.employee.name }}</td>
+                <td>{{ a.employee.department }}</td>
+                <td>{{ a.morning_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ a.morning_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ a.afternoon_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ a.afternoon_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ a.total_hours }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9">No attendance records found.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
 {% endblock %}

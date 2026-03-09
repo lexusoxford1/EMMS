@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Submit Leave Request</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Submit</button>
-</form>
+<section class="content-card">
+    <h2>Submit Leave Request</h2>
+    <p class="muted">Choose the leave date and provide a clear reason for approval.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="actions">
+            <button type="submit">Submit Request</button>
+            <a href="{% url 'leave_list' %}" class="btn btn-soft">Back to Leaves</a>
+        </div>
+    </form>
+</section>
 {% endblock %}

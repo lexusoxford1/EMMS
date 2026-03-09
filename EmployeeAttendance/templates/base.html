@@ -1,63 +1,356 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMMS</title>
     <style>
+        :root {
+            --bg: #f3f7f4;
+            --bg-accent: #e7efe9;
+            --surface: #ffffff;
+            --surface-soft: #f8fbf9;
+            --text: #1d2a22;
+            --muted: #56665d;
+            --line: #d9e4dc;
+            --primary: #176b4d;
+            --primary-hover: #12543c;
+            --warn: #b76e00;
+            --danger: #9d2f2f;
+            --ok: #1f7a3f;
+            --shadow: 0 12px 30px rgba(19, 43, 31, 0.08);
+            --radius: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            color: var(--text);
+            font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
+            background:
+                radial-gradient(circle at 0% 0%, var(--bg-accent), transparent 40%),
+                radial-gradient(circle at 100% 0%, #e8f2ed, transparent 35%),
+                var(--bg);
         }
+
+        .app-shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 22px 16px 34px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.86);
+            backdrop-filter: blur(4px);
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-mark {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-weight: 700;
+            background: linear-gradient(135deg, #156e4f, #0f4c38);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 1.02rem;
+            letter-spacing: 0.2px;
+        }
+
+        .brand small {
+            color: var(--muted);
+            display: block;
+            margin-top: 2px;
+            font-size: 0.78rem;
+        }
+
+        .panel-badge {
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: 1px solid #b8d2c5;
+            color: #0f5138;
+            background: #eaf7f0;
+            white-space: nowrap;
+        }
+
+        .panel-badge.admin {
+            border-color: #c9c2aa;
+            color: #675112;
+            background: #f6f1dc;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
         nav a {
-            margin-right: 15px;
             text-decoration: none;
+            color: var(--text);
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 0.92rem;
+            transition: all 0.16s ease;
         }
+
+        nav a:hover {
+            transform: translateY(-1px);
+            border-color: #b8d2c5;
+            background: #f2faf6;
+        }
+
+        .msg {
+            border: 1px solid #c7dcca;
+            border-left: 4px solid var(--primary);
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            background: #f2faf5;
+            color: #204232;
+        }
+
+        .content-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+
+        h2 {
+            margin: 0 0 14px;
+            font-size: 1.35rem;
+        }
+
+        h3 {
+            margin: 4px 0 12px;
+            font-size: 1.04rem;
+        }
+
+        .stat-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            margin-top: 8px;
+        }
+
+        .stat-item {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px;
+            background: var(--surface-soft);
+        }
+
+        .stat-item .label {
+            font-size: 0.82rem;
+            color: var(--muted);
+            margin: 0 0 5px;
+        }
+
+        .stat-item .value {
+            font-size: 1.26rem;
+            font-weight: 700;
+            margin: 0;
+            color: #103a2b;
+        }
+
         table {
             border-collapse: collapse;
             width: 100%;
-            margin-top: 15px;
+            margin-top: 10px;
+            overflow: hidden;
+            border-radius: 10px;
         }
-        table, th, td {
-            border: 1px solid #ccc;
-        }
+
         th, td {
-            padding: 8px;
-            text-align: left;
-        }
-        .msg {
+            border-bottom: 1px solid var(--line);
             padding: 10px;
-            margin: 10px 0;
-            background: #f1f1f1;
+            text-align: left;
+            vertical-align: top;
+            font-size: 0.92rem;
         }
-        .btn {
-            padding: 8px 12px;
+
+        th {
+            background: #f1f7f4;
+            color: #234235;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        tr:hover td {
+            background: #fbfefc;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+
+        canvas {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            background: #ffffff;
+        }
+        .btn,
+        button,
+        input[type="submit"] {
+            border: 1px solid var(--primary);
+            background: var(--primary);
+            color: #fff;
             text-decoration: none;
-            border: 1px solid #000;
-            background: #eee;
+            border-radius: 10px;
+            padding: 8px 12px;
             display: inline-block;
-            margin-right: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background 0.16s ease;
+        }
+
+        .btn:hover,
+        button:hover,
+        input[type="submit"]:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-soft {
+            border-color: var(--line);
+            background: #fff;
+            color: var(--text);
+        }
+
+        .btn-soft:hover {
+            background: #f3faf6;
+        }
+
+        form p {
+            margin: 0 0 12px;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="date"],
+        input[type="month"],
+        textarea,
+        select {
+            width: 100%;
+            max-width: 420px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 9px 10px;
+            font: inherit;
+            background: #fff;
+            color: var(--text);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 8px 0 2px;
+        }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .status.pending { background: #fff3d8; color: #8b5b00; }
+        .status.approved,
+        .status.completed { background: #e1f6e6; color: #186336; }
+        .status.rejected,
+        .status.undertime { background: #fbe6e6; color: #8f2626; }
+        .status.overtime { background: #dff0ff; color: #174f80; }
+
+        .muted {
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
 <body>
-    {% if user.is_authenticated %}
-    <nav>
-        <a href="{% url 'dashboard' %}">Dashboard</a>
-        {% if user.is_superuser %}
-            <a href="{% url 'employee_list' %}">Employees</a>
-            <a href="{% url 'report_view' %}">Reports</a>
+    <div class="app-shell">
+        {% if user.is_authenticated %}
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">EM</div>
+                <div>
+                    <h1>Employee Management & Monitoring</h1>
+                    <small>Attendance, Leave, and Reports</small>
+                </div>
+            </div>
+            <span class="panel-badge {% if user.is_superuser %}admin{% endif %}">
+                {% if user.is_superuser %}Admin Panel{% else %}Employee Panel{% endif %}
+            </span>
+        </header>
+
+        <nav>
+            <a href="{% url 'dashboard' %}">Dashboard</a>
+            {% if user.is_superuser %}
+                <a href="{% url 'employee_list' %}">Employees</a>
+                <a href="{% url 'report_view' %}">Reports</a>
+            {% endif %}
+            <a href="{% url 'attendance' %}">Attendance</a>
+            <a href="{% url 'leave_list' %}">Leaves</a>
+            <a href="{% url 'logout' %}">Logout</a>
+        </nav>
         {% endif %}
-        <a href="{% url 'attendance' %}">Attendance</a>
-        <a href="{% url 'leave_list' %}">Leaves</a>
-        <a href="{% url 'logout' %}">Logout</a>
-    </nav>
-    {% endif %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="msg">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="msg">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
 
-    {% block content %}{% endblock %}
+        {% block content %}{% endblock %}
+    </div>
 </body>
 </html>
+

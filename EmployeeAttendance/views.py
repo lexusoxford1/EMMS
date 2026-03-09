@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -43,15 +44,202 @@ def logout_view(request):
 @login_required
 def dashboard(request):
     employee_count = Employee.objects.count()
-    today_attendance = Attendance.objects.filter(
-        created_at__date=timezone.now().date()
-    ).count()
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+
+    today_records = list(
+        Attendance.objects.filter(date=today)
+        .select_related("employee")
+        .order_by("employee__name")
+    )
+    present_today = len(today_records)
+
     pending_leaves = LeaveRequest.objects.filter(status="Pending").count()
+    approved_leaves = LeaveRequest.objects.filter(status="Approved").count()
+    rejected_leaves = LeaveRequest.objects.filter(status="Rejected").count()
+
+    month_leaves = LeaveRequest.objects.filter(leave_date__year=today.year, leave_date__month=today.month)
+    month_pending_leaves = month_leaves.filter(status="Pending").count()
+    month_approved_leaves = month_leaves.filter(status="Approved").count()
+    month_rejected_leaves = month_leaves.filter(status="Rejected").count()
+
+    undertime_count = 0
+    completed_count = 0
+    overtime_count = 0
+
+    total_hours_today = 0
+    for attendance in today_records:
+        total_hours_today += attendance.total_hours
+        if attendance.total_hours < Attendance.REQUIRED_HOURS:
+            undertime_count += 1
+        elif attendance.total_hours > Attendance.REQUIRED_HOURS:
+            overtime_count += 1
+        else:
+            completed_count += 1
+
+    total_hours_today = round(total_hours_today, 2)
+    avg_hours_today = round(total_hours_today / present_today, 2) if present_today else 0
+    attendance_rate_today = round((present_today / employee_count) * 100, 1) if employee_count else 0
+
+    divisor = present_today if present_today else 1
+    undertime_percent = round((undertime_count / divisor) * 100, 1) if present_today else 0
+    completed_percent = round((completed_count / divisor) * 100, 1) if present_today else 0
+    overtime_percent = round((overtime_count / divisor) * 100, 1) if present_today else 0
+
+    undertime_alerts = sorted(
+        [record for record in today_records if record.total_hours < Attendance.REQUIRED_HOURS],
+        key=lambda item: item.total_hours,
+    )[:5]
+    overtime_alerts = sorted(
+        [record for record in today_records if record.total_hours > Attendance.REQUIRED_HOURS],
+        key=lambda item: item.total_hours,
+        reverse=True,
+    )[:5]
+
+    trend_rows = []
+    for days_ago in range(6, -1, -1):
+        trend_date = today - timedelta(days=days_ago)
+        day_records = list(Attendance.objects.filter(date=trend_date))
+
+        day_undertime = 0
+        day_completed = 0
+        day_overtime = 0
+        for day_record in day_records:
+            if day_record.total_hours < Attendance.REQUIRED_HOURS:
+                day_undertime += 1
+            elif day_record.total_hours > Attendance.REQUIRED_HOURS:
+                day_overtime += 1
+            else:
+                day_completed += 1
+
+        trend_rows.append(
+            {
+                "date": trend_date,
+                "undertime": day_undertime,
+                "completed": day_completed,
+                "overtime": day_overtime,
+            }
+        )
+
+    department_map = {}
+    for attendance in today_records:
+        department_name = attendance.employee.department or "Unassigned"
+        if department_name not in department_map:
+            department_map[department_name] = {
+                "department": department_name,
+                "present": 0,
+                "total_hours": 0,
+                "undertime": 0,
+                "completed": 0,
+                "overtime": 0,
+            }
+
+        row = department_map[department_name]
+        row["present"] += 1
+        row["total_hours"] += attendance.total_hours
+        if attendance.total_hours < Attendance.REQUIRED_HOURS:
+            row["undertime"] += 1
+        elif attendance.total_hours > Attendance.REQUIRED_HOURS:
+            row["overtime"] += 1
+        else:
+            row["completed"] += 1
+
+    department_rows = []
+    for row in department_map.values():
+        row["total_hours"] = round(row["total_hours"], 2)
+        row["avg_hours"] = round(row["total_hours"] / row["present"], 2) if row["present"] else 0
+        row["completion_rate"] = round((row["completed"] / row["present"]) * 100, 1) if row["present"] else 0
+        department_rows.append(row)
+    department_rows = sorted(department_rows, key=lambda item: item["present"], reverse=True)
+
+    employee = None
+    my_total_days = 0
+    my_total_hours = 0
+    my_avg_hours = 0
+    my_undertime_days = 0
+    my_completed_days = 0
+    my_overtime_days = 0
+    my_completion_rate = 0
+    my_best_day = None
+    my_last7_trend = []
+
+    if not request.user.is_superuser:
+        try:
+            employee = Employee.objects.get(user=request.user)
+        except Employee.DoesNotExist:
+            employee = None
+
+    if employee:
+        my_month_records = list(
+            Attendance.objects.filter(
+                employee=employee,
+                date__year=today.year,
+                date__month=today.month,
+            ).order_by("-date")
+        )
+
+        my_total_days = len(my_month_records)
+        my_total_hours = round(sum(record.total_hours for record in my_month_records), 2)
+        my_avg_hours = round(my_total_hours / my_total_days, 2) if my_total_days else 0
+
+        for record in my_month_records:
+            if record.total_hours < Attendance.REQUIRED_HOURS:
+                my_undertime_days += 1
+            elif record.total_hours > Attendance.REQUIRED_HOURS:
+                my_overtime_days += 1
+            else:
+                my_completed_days += 1
+
+        my_completion_rate = round((my_completed_days / my_total_days) * 100, 1) if my_total_days else 0
+        my_best_day = max(my_month_records, key=lambda item: item.total_hours) if my_month_records else None
+
+        for days_ago in range(6, -1, -1):
+            day = today - timedelta(days=days_ago)
+            day_record = Attendance.objects.filter(employee=employee, date=day).first()
+            day_hours = day_record.total_hours if day_record else 0
+
+            if day_hours < Attendance.REQUIRED_HOURS:
+                day_status = "Undertime"
+            elif day_hours > Attendance.REQUIRED_HOURS:
+                day_status = "Overtime"
+            else:
+                day_status = "Completed"
+
+            my_last7_trend.append({"date": day, "hours": day_hours, "status": day_status})
 
     context = {
         "employee_count": employee_count,
-        "today_attendance": today_attendance,
+        "present_today": present_today,
+        "today_attendance": present_today,
         "pending_leaves": pending_leaves,
+        "approved_leaves": approved_leaves,
+        "rejected_leaves": rejected_leaves,
+        "month_start": month_start,
+        "month_pending_leaves": month_pending_leaves,
+        "month_approved_leaves": month_approved_leaves,
+        "month_rejected_leaves": month_rejected_leaves,
+        "undertime_count": undertime_count,
+        "completed_count": completed_count,
+        "overtime_count": overtime_count,
+        "undertime_percent": undertime_percent,
+        "completed_percent": completed_percent,
+        "overtime_percent": overtime_percent,
+        "attendance_rate_today": attendance_rate_today,
+        "total_hours_today": total_hours_today,
+        "avg_hours_today": avg_hours_today,
+        "undertime_alerts": undertime_alerts,
+        "overtime_alerts": overtime_alerts,
+        "trend_rows": trend_rows,
+        "department_rows": department_rows,
+        "my_total_days": my_total_days,
+        "my_total_hours": my_total_hours,
+        "my_avg_hours": my_avg_hours,
+        "my_undertime_days": my_undertime_days,
+        "my_completed_days": my_completed_days,
+        "my_overtime_days": my_overtime_days,
+        "my_completion_rate": my_completion_rate,
+        "my_best_day": my_best_day,
+        "my_last7_trend": my_last7_trend,
     }
     return render(request, "dashboard.html", context)
 
@@ -81,13 +269,11 @@ def employee_add(request):
 @login_required
 def attendance_view(request):
     if request.user.is_superuser:
-        today = timezone.now().date()
-        today_records = Attendance.objects.filter(
-            created_at__date=today
-        ).select_related("employee").order_by("-check_in_time")
+        today = timezone.localdate()
+        today_records = Attendance.objects.filter(date=today).select_related("employee").order_by("employee__name")
 
         context = {
-            "today_record": None,
+            "record": None,
             "today_records": today_records,
             "my_history": [],
             "is_admin_view": True,
@@ -95,44 +281,39 @@ def attendance_view(request):
         return render(request, "attendance.html", context)
 
     employee = get_object_or_404(Employee, user=request.user)
-    today = timezone.now().date()
+    today = timezone.localdate()
 
-    today_record = Attendance.objects.filter(
+    record, created = Attendance.objects.get_or_create(
         employee=employee,
-        created_at__date=today
-    ).order_by("-created_at").first()
+        date=today
+    )
 
     if request.method == "POST":
-        action = request.POST.get("action")
+        now = timezone.now()
 
-        if action == "checkin":
-            if today_record and today_record.check_in_time and not today_record.check_out_time:
-                messages.warning(request, "You already checked in today")
-            else:
-                Attendance.objects.create(
-                    employee=employee,
-                    check_in_time=timezone.now()
-                )
-                messages.success(request, "Checked in successfully")
-            return redirect("attendance")
+        if not record.morning_in:
+            record.morning_in = now
+            messages.success(request, "Morning time in recorded")
+        elif not record.morning_out:
+            record.morning_out = now
+            messages.success(request, "Morning time out recorded")
+        elif not record.afternoon_in:
+            record.afternoon_in = now
+            messages.success(request, "Afternoon time in recorded")
+        elif not record.afternoon_out:
+            record.afternoon_out = now
+            messages.success(request, "Afternoon time out recorded")
+        else:
+            messages.warning(request, "Attendance for today is already complete")
 
-        elif action == "checkout":
-            if today_record and today_record.check_in_time and not today_record.check_out_time:
-                today_record.check_out_time = timezone.now()
-                today_record.save()
-                messages.success(request, "Checked out successfully")
-            else:
-                messages.warning(request, "No active check-in found")
-            return redirect("attendance")
+        record.save()
+        return redirect("attendance")
 
-    today_records = Attendance.objects.filter(
-        created_at__date=today
-    ).select_related("employee").order_by("-check_in_time")
-
-    my_history = Attendance.objects.filter(employee=employee).order_by("-created_at")
+    today_records = Attendance.objects.filter(date=today).select_related("employee").order_by("employee__name")
+    my_history = Attendance.objects.filter(employee=employee).order_by("-date")
 
     context = {
-        "today_record": today_record,
+        "record": record,
         "today_records": today_records,
         "my_history": my_history,
         "is_admin_view": False,
@@ -193,15 +374,12 @@ def leave_reject(request, pk):
 @user_passes_test(is_admin)
 def report_view(request):
     month = request.GET.get("month")
-    attendances = Attendance.objects.all().select_related("employee").order_by("-created_at")
+    attendances = Attendance.objects.all().select_related("employee").order_by("-date")
 
     if month:
         try:
             year, month_num = map(int, month.split("-"))
-            attendances = attendances.filter(
-                created_at__year=year,
-                created_at__month=month_num
-            )
+            attendances = attendances.filter(date__year=year, date__month=month_num)
         except ValueError:
             messages.error(request, "Invalid month format")
 
@@ -212,15 +390,12 @@ def report_view(request):
 @user_passes_test(is_admin)
 def export_excel(request):
     month = request.GET.get("month")
-    attendances = Attendance.objects.all().select_related("employee").order_by("-created_at")
+    attendances = Attendance.objects.all().select_related("employee").order_by("-date")
 
     if month:
         try:
             year, month_num = map(int, month.split("-"))
-            attendances = attendances.filter(
-                created_at__year=year,
-                created_at__month=month_num
-            )
+            attendances = attendances.filter(date__year=year, date__month=month_num)
         except ValueError:
             pass
 
@@ -228,16 +403,29 @@ def export_excel(request):
     ws = wb.active
     ws.title = "Attendance Report"
 
-    ws.append(["Employee ID", "Name", "Department", "Check In", "Check Out", "Worked Hours"])
+    ws.append([
+        "Date",
+        "Employee ID",
+        "Name",
+        "Department",
+        "Morning In",
+        "Morning Out",
+        "Afternoon In",
+        "Afternoon Out",
+        "Total Hours"
+    ])
 
     for a in attendances:
         ws.append([
+            str(a.date),
             a.employee.employee_id,
             a.employee.name,
             a.employee.department,
-            a.check_in_time.strftime("%Y-%m-%d %H:%M:%S") if a.check_in_time else "",
-            a.check_out_time.strftime("%Y-%m-%d %H:%M:%S") if a.check_out_time else "",
-            a.worked_hours,
+            a.morning_in.strftime("%Y-%m-%d %H:%M:%S") if a.morning_in else "",
+            a.morning_out.strftime("%Y-%m-%d %H:%M:%S") if a.morning_out else "",
+            a.afternoon_in.strftime("%Y-%m-%d %H:%M:%S") if a.afternoon_in else "",
+            a.afternoon_out.strftime("%Y-%m-%d %H:%M:%S") if a.afternoon_out else "",
+            a.total_hours,
         ])
 
     response = HttpResponse(
@@ -252,15 +440,12 @@ def export_excel(request):
 @user_passes_test(is_admin)
 def export_pdf(request):
     month = request.GET.get("month")
-    attendances = Attendance.objects.all().select_related("employee").order_by("-created_at")
+    attendances = Attendance.objects.all().select_related("employee").order_by("-date")
 
     if month:
         try:
             year, month_num = map(int, month.split("-"))
-            attendances = attendances.filter(
-                created_at__year=year,
-                created_at__month=month_num
-            )
+            attendances = attendances.filter(date__year=year, date__month=month_num)
         except ValueError:
             pass
 
@@ -278,10 +463,12 @@ def export_pdf(request):
     p.setFont("Helvetica", 10)
     for a in attendances:
         line = (
-            f"{a.employee.employee_id} | {a.employee.name} | "
-            f"In: {a.check_in_time.strftime('%Y-%m-%d %H:%M') if a.check_in_time else '-'} | "
-            f"Out: {a.check_out_time.strftime('%Y-%m-%d %H:%M') if a.check_out_time else '-'} | "
-            f"Hours: {a.worked_hours}"
+            f"{a.date} | {a.employee.employee_id} | {a.employee.name} | "
+            f"AM In: {a.morning_in.strftime('%H:%M') if a.morning_in else '-'} | "
+            f"AM Out: {a.morning_out.strftime('%H:%M') if a.morning_out else '-'} | "
+            f"PM In: {a.afternoon_in.strftime('%H:%M') if a.afternoon_in else '-'} | "
+            f"PM Out: {a.afternoon_out.strftime('%H:%M') if a.afternoon_out else '-'} | "
+            f"Hours: {a.total_hours}"
         )
         p.drawString(50, y, line)
         y -= 20
@@ -293,3 +480,4 @@ def export_pdf(request):
 
     p.save()
     return response
+

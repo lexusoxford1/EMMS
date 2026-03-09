@@ -1,37 +1,62 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Leave Requests</h2>
-
-{% if not user.is_superuser %}
-<a href="{% url 'leave_add' %}" class="btn">Request Leave</a>
-{% endif %}
-
-<table>
-    <tr>
-        <th>Employee</th>
-        <th>Leave Date</th>
-        <th>Reason</th>
-        <th>Status</th>
+<section class="content-card">
+    <h2>Leave Requests</h2>
+    <p class="muted">
         {% if user.is_superuser %}
-        <th>Action</th>
+            Review, approve, or reject submitted leave requests.
+        {% else %}
+            View your leave request history and current approval status.
         {% endif %}
-    </tr>
-    {% for leave in leaves %}
-    <tr>
-        <td>{{ leave.employee.name }}</td>
-        <td>{{ leave.leave_date }}</td>
-        <td>{{ leave.reason }}</td>
-        <td>{{ leave.status }}</td>
-        {% if user.is_superuser %}
-        <td>
-            {% if leave.status == "Pending" %}
-                <a href="{% url 'leave_approve' leave.id %}">Approve</a>
-                <a href="{% url 'leave_reject' leave.id %}">Reject</a>
-            {% endif %}
-        </td>
-        {% endif %}
-    </tr>
-    {% endfor %}
-</table>
+    </p>
+
+    {% if not user.is_superuser %}
+    <div class="actions">
+        <a href="{% url 'leave_add' %}" class="btn">Request Leave</a>
+    </div>
+    {% endif %}
+
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Employee</th>
+                <th>Leave Date</th>
+                <th>Reason</th>
+                <th>Status</th>
+                {% if user.is_superuser %}
+                <th>Action</th>
+                {% endif %}
+            </tr>
+            {% for leave in leaves %}
+            <tr>
+                <td>{{ leave.employee.name }}</td>
+                <td>{{ leave.leave_date }}</td>
+                <td>{{ leave.reason }}</td>
+                <td>
+                    <span class="status {% if leave.status == 'Pending' %}pending{% elif leave.status == 'Approved' %}approved{% else %}rejected{% endif %}">
+                        {{ leave.status }}
+                    </span>
+                </td>
+                {% if user.is_superuser %}
+                <td>
+                    {% if leave.status == "Pending" %}
+                        <div class="actions">
+                            <a href="{% url 'leave_approve' leave.id %}" class="btn">Approve</a>
+                            <a href="{% url 'leave_reject' leave.id %}" class="btn btn-soft">Reject</a>
+                        </div>
+                    {% else %}
+                        <span class="muted">No action</span>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if user.is_superuser %}5{% else %}4{% endif %}">No leave requests found.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
 {% endblock %}

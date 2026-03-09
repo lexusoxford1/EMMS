@@ -14,20 +14,44 @@ class Employee(models.Model):
 
 
 class Attendance(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    check_in_time = models.DateTimeField(null=True, blank=True)
-    check_out_time = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    REQUIRED_HOURS = 8
 
-    def __str__(self):
-        return f"{self.employee.name} - {self.created_at.date()}"
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    date = models.DateField(default=timezone.localdate)
+
+    morning_in = models.DateTimeField(null=True, blank=True)
+    morning_out = models.DateTimeField(null=True, blank=True)
+    afternoon_in = models.DateTimeField(null=True, blank=True)
+    afternoon_out = models.DateTimeField(null=True, blank=True)
 
     @property
-    def worked_hours(self):
-        if self.check_in_time and self.check_out_time:
-            duration = self.check_out_time - self.check_in_time
+    def morning_hours(self):
+        if self.morning_in and self.morning_out:
+            duration = self.morning_out - self.morning_in
             return round(duration.total_seconds() / 3600, 2)
         return 0
+
+    @property
+    def afternoon_hours(self):
+        if self.afternoon_in and self.afternoon_out:
+            duration = self.afternoon_out - self.afternoon_in
+            return round(duration.total_seconds() / 3600, 2)
+        return 0
+
+    @property
+    def total_hours(self):
+        return self.morning_hours + self.afternoon_hours
+
+    @property
+    def attendance_status(self):
+        if self.total_hours < self.REQUIRED_HOURS:
+            return "Undertime"
+        if self.total_hours > self.REQUIRED_HOURS:
+            return "Overtime"
+        return "Completed"
+
+    def __str__(self):
+        return f"{self.employee.name} - {self.date}"
 
 
 class LeaveRequest(models.Model):

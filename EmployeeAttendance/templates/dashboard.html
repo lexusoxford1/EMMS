@@ -1,8 +1,458 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Dashboard</h2>
-<p>Total Employees: {{ employee_count }}</p>
-<p>Today's Attendance Records: {{ today_attendance }}</p>
-<p>Pending Leave Requests: {{ pending_leaves }}</p>
+{% if user.is_superuser %}
+<section class="content-card">
+    <h2>Admin Dashboard Analytics</h2>
+    <p class="muted">Summary of attendance performance, leave movement, and trend patterns.</p>
+
+    <div class="stat-grid">
+        <article class="stat-item">
+            <p class="label">Total Employees</p>
+            <p class="value">{{ employee_count }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Present Today</p>
+            <p class="value">{{ present_today }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Attendance Rate</p>
+            <p class="value">{{ attendance_rate_today }}%</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Total Hours Today</p>
+            <p class="value">{{ total_hours_today }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Average Hours Today</p>
+            <p class="value">{{ avg_hours_today }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Pending Leaves</p>
+            <p class="value">{{ pending_leaves }}</p>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Charts</h3>
+    <div class="stat-grid">
+        <article class="stat-item">
+            <p class="label">7-Day Attendance Volume (Vertical Bar)</p>
+            <canvas id="adminBarChart" width="520" height="280"></canvas>
+        </article>
+        <article class="stat-item">
+            <p class="label">Today's Attendance Mix (Pie)</p>
+            <canvas id="adminPieChart" width="520" height="280"></canvas>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Attendance Status Breakdown</h3>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Status</th>
+                <th>Count</th>
+                <th>Percent</th>
+            </tr>
+            <tr>
+                <td><span class="status undertime">Undertime (&lt; 8h)</span></td>
+                <td>{{ undertime_count }}</td>
+                <td>{{ undertime_percent }}%</td>
+            </tr>
+            <tr>
+                <td><span class="status completed">Completed (= 8h)</span></td>
+                <td>{{ completed_count }}</td>
+                <td>{{ completed_percent }}%</td>
+            </tr>
+            <tr>
+                <td><span class="status overtime">Overtime (&gt; 8h)</span></td>
+                <td>{{ overtime_count }}</td>
+                <td>{{ overtime_percent }}%</td>
+            </tr>
+        </table>
+    </div>
+    <p class="muted">Percentages are based on employees with attendance records today.</p>
+</section>
+
+<section class="content-card">
+    <h3>Department Analytics (Today)</h3>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Department</th>
+                <th>Present</th>
+                <th>Avg Hours</th>
+                <th>Undertime</th>
+                <th>Completed</th>
+                <th>Overtime</th>
+                <th>Completion Rate</th>
+            </tr>
+            {% for row in department_rows %}
+            <tr>
+                <td>{{ row.department }}</td>
+                <td>{{ row.present }}</td>
+                <td>{{ row.avg_hours }}</td>
+                <td>{{ row.undertime }}</td>
+                <td>{{ row.completed }}</td>
+                <td>{{ row.overtime }}</td>
+                <td>{{ row.completion_rate }}%</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">No department attendance analytics for today.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Quick Alerts</h3>
+    <div class="stat-grid">
+        <article class="stat-item">
+            <p class="label">Undertime Risk (Lowest Hours)</p>
+            {% if undertime_alerts %}
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Hours</th>
+                    </tr>
+                    {% for item in undertime_alerts %}
+                    <tr>
+                        <td>{{ item.employee.name }}</td>
+                        <td>{{ item.total_hours }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% else %}
+            <p class="muted">No undertime alerts today.</p>
+            {% endif %}
+        </article>
+
+        <article class="stat-item">
+            <p class="label">Overtime Alert (Highest Hours)</p>
+            {% if overtime_alerts %}
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Hours</th>
+                    </tr>
+                    {% for item in overtime_alerts %}
+                    <tr>
+                        <td>{{ item.employee.name }}</td>
+                        <td>{{ item.total_hours }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% else %}
+            <p class="muted">No overtime alerts today.</p>
+            {% endif %}
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>7-Day Attendance Trend</h3>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Undertime</th>
+                <th>Completed</th>
+                <th>Overtime</th>
+            </tr>
+            {% for row in trend_rows %}
+            <tr>
+                <td>{{ row.date }}</td>
+                <td>{{ row.undertime }}</td>
+                <td>{{ row.completed }}</td>
+                <td>{{ row.overtime }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Leave Analytics ({{ month_start|date:"F Y" }})</h3>
+    <div class="stat-grid">
+        <article class="stat-item">
+            <p class="label">Pending</p>
+            <p class="value">{{ month_pending_leaves }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Approved</p>
+            <p class="value">{{ month_approved_leaves }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Rejected</p>
+            <p class="value">{{ month_rejected_leaves }}</p>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Quick Actions</h3>
+    <div class="actions">
+        <a href="{% url 'attendance' %}" class="btn">Open Attendance</a>
+        <a href="{% url 'leave_list' %}" class="btn">Review Leaves</a>
+        <a href="{% url 'report_view' %}" class="btn btn-soft">Open Reports</a>
+        <a href="{% url 'export_excel' %}" class="btn btn-soft">Export Excel</a>
+    </div>
+</section>
+{% else %}
+<section class="content-card">
+    <h2>My Dashboard Analytics</h2>
+    <p class="muted">Personal attendance insights for {{ month_start|date:"F Y" }}.</p>
+
+    <div class="stat-grid">
+        <article class="stat-item">
+            <p class="label">Work Days Logged</p>
+            <p class="value">{{ my_total_days }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Total Hours (Month)</p>
+            <p class="value">{{ my_total_hours }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Average Hours/Day</p>
+            <p class="value">{{ my_avg_hours }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Completed Days</p>
+            <p class="value">{{ my_completed_days }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Undertime Days</p>
+            <p class="value">{{ my_undertime_days }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Overtime Days</p>
+            <p class="value">{{ my_overtime_days }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Completion Rate</p>
+            <p class="value">{{ my_completion_rate }}%</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Best Day Hours</p>
+            <p class="value">{% if my_best_day %}{{ my_best_day.total_hours }}{% else %}0{% endif %}</p>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Charts</h3>
+    <div class="stat-grid">
+        <article class="stat-item">
+            <p class="label">My Last 7 Days Hours (Vertical Bar)</p>
+            <canvas id="employeeBarChart" width="520" height="280"></canvas>
+        </article>
+        <article class="stat-item">
+            <p class="label">My Monthly Status Mix (Pie)</p>
+            <canvas id="employeePieChart" width="520" height="280"></canvas>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>My 7-Day Trend</h3>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Hours</th>
+                <th>Status</th>
+            </tr>
+            {% for row in my_last7_trend %}
+            <tr>
+                <td>{{ row.date }}</td>
+                <td>{{ row.hours }}</td>
+                <td>
+                    <span class="status {% if row.status == 'Completed' %}completed{% elif row.status == 'Overtime' %}overtime{% else %}undertime{% endif %}">
+                        {{ row.status }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3">No personal trend data available.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Leave Status Overview</h3>
+    <div class="stat-grid">
+        <article class="stat-item">
+            <p class="label">Pending Leaves (All)</p>
+            <p class="value">{{ pending_leaves }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Approved Leaves (All)</p>
+            <p class="value">{{ approved_leaves }}</p>
+        </article>
+        <article class="stat-item">
+            <p class="label">Rejected Leaves (All)</p>
+            <p class="value">{{ rejected_leaves }}</p>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Quick Actions</h3>
+    <div class="actions">
+        <a href="{% url 'attendance' %}" class="btn">Record Attendance</a>
+        <a href="{% url 'leave_add' %}" class="btn">Request Leave</a>
+        <a href="{% url 'leave_list' %}" class="btn btn-soft">View Leave History</a>
+    </div>
+</section>
+{% endif %}
+
+<script>
+(function () {
+    function drawVerticalBarChart(canvasId, labels, values, color) {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas || !labels || !labels.length) {
+            return;
+        }
+
+        var ctx = canvas.getContext("2d");
+        var w = canvas.width;
+        var h = canvas.height;
+        var pad = { top: 16, right: 16, bottom: 46, left: 36 };
+        var chartW = w - pad.left - pad.right;
+        var chartH = h - pad.top - pad.bottom;
+        var maxVal = Math.max.apply(null, values.concat([1]));
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.strokeStyle = "#d9e4dc";
+        ctx.beginPath();
+        ctx.moveTo(pad.left, pad.top);
+        ctx.lineTo(pad.left, h - pad.bottom);
+        ctx.lineTo(w - pad.right, h - pad.bottom);
+        ctx.stroke();
+
+        var bars = labels.length;
+        var slot = chartW / bars;
+        var barW = Math.max(18, slot * 0.56);
+
+        ctx.fillStyle = color || "#176b4d";
+        ctx.font = "12px Segoe UI";
+        ctx.textAlign = "center";
+
+        for (var i = 0; i < bars; i++) {
+            var v = Number(values[i] || 0);
+            var barH = (v / maxVal) * (chartH - 8);
+            var x = pad.left + i * slot + (slot - barW) / 2;
+            var y = h - pad.bottom - barH;
+
+            ctx.fillRect(x, y, barW, barH);
+            ctx.fillStyle = "#1d2a22";
+            ctx.fillText(String(v), x + barW / 2, y - 5);
+            ctx.fillStyle = color || "#176b4d";
+            ctx.fillStyle = "#4f6157";
+            ctx.fillText(labels[i], x + barW / 2, h - pad.bottom + 16);
+            ctx.fillStyle = color || "#176b4d";
+        }
+    }
+
+    function drawPieChart(canvasId, labels, values, colors) {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas || !labels || !labels.length) {
+            return;
+        }
+
+        var ctx = canvas.getContext("2d");
+        var w = canvas.width;
+        var h = canvas.height;
+        var total = values.reduce(function (a, b) { return a + Number(b || 0); }, 0);
+        var cx = w * 0.32;
+        var cy = h * 0.5;
+        var r = Math.min(w, h) * 0.3;
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+
+        if (!total) {
+            ctx.fillStyle = "#5a6a61";
+            ctx.font = "14px Segoe UI";
+            ctx.fillText("No data", cx - 22, cy);
+            return;
+        }
+
+        var start = -Math.PI / 2;
+        for (var i = 0; i < values.length; i++) {
+            var v = Number(values[i] || 0);
+            var angle = (v / total) * Math.PI * 2;
+            var end = start + angle;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, r, start, end);
+            ctx.closePath();
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fill();
+
+            start = end;
+        }
+
+        ctx.font = "12px Segoe UI";
+        var lx = w * 0.62;
+        var ly = 42;
+        for (var j = 0; j < labels.length; j++) {
+            var value = Number(values[j] || 0);
+            var pct = total ? ((value / total) * 100).toFixed(1) : "0.0";
+            ctx.fillStyle = colors[j % colors.length];
+            ctx.fillRect(lx, ly - 9, 12, 12);
+            ctx.fillStyle = "#1d2a22";
+            ctx.fillText(labels[j] + " (" + value + ", " + pct + "%)", lx + 18, ly);
+            ly += 24;
+        }
+    }
+
+    {% if user.is_superuser %}
+    drawVerticalBarChart(
+        "adminBarChart",
+        [{% for row in trend_rows %}"{{ row.date|date:'M d' }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+        [{% for row in trend_rows %}{{ row.undertime|add:row.completed|add:row.overtime }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+        "#1b7d59"
+    );
+
+    drawPieChart(
+        "adminPieChart",
+        ["Undertime", "Completed", "Overtime"],
+        [{{ undertime_count }}, {{ completed_count }}, {{ overtime_count }}],
+        ["#d35f5f", "#2e8b57", "#2c7bb6"]
+    );
+    {% else %}
+    drawVerticalBarChart(
+        "employeeBarChart",
+        [{% for row in my_last7_trend %}"{{ row.date|date:'M d' }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+        [{% for row in my_last7_trend %}{{ row.hours }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+        "#176b4d"
+    );
+
+    drawPieChart(
+        "employeePieChart",
+        ["Undertime", "Completed", "Overtime"],
+        [{{ my_undertime_days }}, {{ my_completed_days }}, {{ my_overtime_days }}],
+        ["#d35f5f", "#2e8b57", "#2c7bb6"]
+    );
+    {% endif %}
+})();
+</script>
 {% endblock %}
