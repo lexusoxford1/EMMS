@@ -2,6 +2,7 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -31,7 +32,11 @@ def login_view(request):
             login(request, user)
             return redirect("dashboard")
         else:
-            messages.error(request, "Invalid username or password")
+            existing_user = User.objects.filter(username=username).first()
+            if existing_user and existing_user.check_password(password) and not existing_user.is_active:
+                messages.error(request, "Your account is non-active. Please contact your administrator.")
+            else:
+                messages.error(request, "Invalid username or password")
 
     return render(request, "login.html")
 
@@ -247,8 +252,17 @@ def dashboard(request):
 @login_required
 @user_passes_test(is_admin)
 def employee_list(request):
-    employees = Employee.objects.all().order_by("employee_id")
-    return render(request, "employee_list.html", {"employees": employees})
+    employee_id_query = request.GET.get("employee_id", "").strip()
+
+    employees = Employee.objects.select_related("user").all().order_by("employee_id")
+    if employee_id_query:
+        employees = employees.filter(employee_id__icontains=employee_id_query)
+
+    context = {
+        "employees": employees,
+        "employee_id_query": employee_id_query,
+    }
+    return render(request, "employee_list.html", context)
 
 
 @login_required
@@ -264,6 +278,31 @@ def employee_add(request):
         form = EmployeeForm()
 
     return render(request, "employee_form.html", {"form": form})
+
+
+@login_required
+@user_passes_test(is_admin)
+def employee_toggle_status(request, pk):
+    if request.method != "POST":
+        return redirect("employee_list")
+
+    employee = get_object_or_404(Employee, pk=pk)
+
+    if employee.status == Employee.STATUS_ACTIVE:
+        employee.status = Employee.STATUS_NON_ACTIVE
+        message = f"{employee.name} is now Non-Active and cannot log in."
+    else:
+        employee.status = Employee.STATUS_ACTIVE
+        message = f"{employee.name} is now Active and can log in."
+
+    employee.save()
+
+    if employee.user:
+        employee.user.is_active = employee.status == Employee.STATUS_ACTIVE
+        employee.user.save(update_fields=["is_active"])
+
+    messages.success(request, message)
+    return redirect("employee_list")
 
 
 @login_required

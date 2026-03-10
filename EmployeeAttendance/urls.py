@@ -8,6 +8,7 @@ urlpatterns = [
 
     path("employees/", views.employee_list, name="employee_list"),
     path("employees/add/", views.employee_add, name="employee_add"),
+    path("employees/<int:pk>/toggle-status/", views.employee_toggle_status, name="employee_toggle_status"),
 
     path("attendance/", views.attendance_view, name="attendance"),
 
@@ -20,3 +21,4 @@ urlpatterns = [
     path("reports/excel/", views.export_excel, name="export_excel"),
     path("reports/pdf/", views.export_pdf, name="export_pdf"),
 ]
+

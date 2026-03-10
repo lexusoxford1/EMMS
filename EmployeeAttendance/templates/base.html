@@ -15,9 +15,6 @@
             --line: #d9e4dc;
             --primary: #176b4d;
             --primary-hover: #12543c;
-            --warn: #b76e00;
-            --danger: #9d2f2f;
-            --ok: #1f7a3f;
             --shadow: 0 12px 30px rgba(19, 43, 31, 0.08);
             --radius: 14px;
         }
@@ -36,50 +33,60 @@
                 var(--bg);
         }
 
-        .app-shell {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 22px 16px 34px;
-        }
-
-        .topbar {
+        .app-layout {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 14px;
-            padding: 14px;
-            border: 1px solid var(--line);
-            border-radius: var(--radius);
-            background: rgba(255, 255, 255, 0.86);
-            backdrop-filter: blur(4px);
-            box-shadow: var(--shadow);
-            margin-bottom: 18px;
+            min-height: 100vh;
         }
 
-        .brand {
+        .sidebar {
+            width: 270px;
+            border-right: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(5px);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: width 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.01), 10px 0 20px rgba(16, 41, 29, 0.06);
+            z-index: 20;
+        }
+
+        .sidebar.collapsed {
+            width: 84px;
+        }
+
+        .sidebar.collapsed .brand-text,
+        .sidebar.collapsed .panel-badge,
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+
+        .sidebar-head {
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
         .brand-mark {
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             border-radius: 10px;
             display: grid;
             place-items: center;
             color: #fff;
             font-weight: 700;
             background: linear-gradient(135deg, #156e4f, #0f4c38);
+            flex-shrink: 0;
         }
 
-        .brand h1 {
+        .brand-text h1 {
             margin: 0;
-            font-size: 1.02rem;
+            font-size: 1rem;
             letter-spacing: 0.2px;
         }
 
-        .brand small {
+        .brand-text small {
             color: var(--muted);
             display: block;
             margin-top: 2px;
@@ -95,6 +102,7 @@
             color: #0f5138;
             background: #eaf7f0;
             white-space: nowrap;
+            align-self: flex-start;
         }
 
         .panel-badge.admin {
@@ -103,29 +111,97 @@
             background: #f6f1dc;
         }
 
-        nav {
+        .sidebar-nav {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 8px;
-            margin-bottom: 16px;
         }
 
-        nav a {
+        .nav-link {
             text-decoration: none;
             color: var(--text);
             background: var(--surface);
             border: 1px solid var(--line);
             border-radius: 10px;
-            padding: 8px 12px;
+            padding: 9px 10px;
             font-weight: 600;
             font-size: 0.92rem;
             transition: all 0.16s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        nav a:hover {
+        .nav-link:hover {
             transform: translateY(-1px);
             border-color: #b8d2c5;
             background: #f2faf6;
+        }
+
+        .sidebar.collapsed .nav-link {
+            justify-content: center;
+            padding: 10px 8px;
+        }
+
+        .nav-icon {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            color: #2d5f4a;
+            flex-shrink: 0;
+        }
+
+        .nav-icon svg {
+            width: 16px;
+            height: 16px;
+            display: block;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .main-panel {
+            flex: 1;
+            min-width: 0;
+            padding: 18px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(4px);
+            box-shadow: var(--shadow);
+            margin-bottom: 14px;
+        }
+
+        .topbar-title {
+            font-size: 0.92rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .icon-btn {
+            border: 1px solid var(--line);
+            background: #fff;
+            color: #1f3d2f;
+            border-radius: 10px;
+            width: 38px;
+            height: 38px;
+            cursor: pointer;
+            font-size: 1.05rem;
+            line-height: 1;
+        }
+
+        .icon-btn:hover {
+            background: #f3faf6;
         }
 
         .msg {
@@ -215,7 +291,6 @@
             overflow-x: auto;
         }
 
-
         canvas {
             width: 100%;
             max-width: 100%;
@@ -223,6 +298,7 @@
             border-radius: 10px;
             background: #ffffff;
         }
+
         .btn,
         button,
         input[type="submit"] {
@@ -253,6 +329,22 @@
 
         .btn-soft:hover {
             background: #f3faf6;
+        }
+
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .btn-icon svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         form p {
@@ -307,40 +399,95 @@
             font-size: 0.9rem;
         }
 
-        @media (max-width: 768px) {
-            .topbar {
-                flex-direction: column;
-                align-items: flex-start;
+        .app-shell {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 22px 16px 34px;
+        }
+
+        @media (max-width: 960px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+                width: 270px;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar.collapsed {
+                width: 270px;
+            }
+
+            .sidebar.collapsed .brand-text,
+            .sidebar.collapsed .panel-badge,
+            .sidebar.collapsed .nav-text {
+                display: initial;
+            }
+
+            .main-panel {
+                padding: 14px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="app-shell">
-        {% if user.is_authenticated %}
-        <header class="topbar">
-            <div class="brand">
+    {% if user.is_authenticated %}
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-head">
                 <div class="brand-mark">EM</div>
-                <div>
-                    <h1>Employee Management & Monitoring</h1>
-                    <small>Attendance, Leave, and Reports</small>
+                <div class="brand-text">
+                    <h1>EMMS</h1>
+                    <small>Employee Monitoring</small>
                 </div>
             </div>
+
             <span class="panel-badge {% if user.is_superuser %}admin{% endif %}">
                 {% if user.is_superuser %}Admin Panel{% else %}Employee Panel{% endif %}
             </span>
-        </header>
 
-        <nav>
-            <a href="{% url 'dashboard' %}">Dashboard</a>
-            {% if user.is_superuser %}
-                <a href="{% url 'employee_list' %}">Employees</a>
-                <a href="{% url 'report_view' %}">Reports</a>
-            {% endif %}
-            <a href="{% url 'attendance' %}">Attendance</a>
-            <a href="{% url 'leave_list' %}">Leaves</a>
-            <a href="{% url 'logout' %}">Logout</a>
-        </nav>
+            <nav class="sidebar-nav">
+                <a class="nav-link" href="{% url 'dashboard' %}">
+                    <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12l9-8 9 8"></path><path d="M5 10v10h14V10"></path></svg></span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                {% if user.is_superuser %}
+                    <a class="nav-link" href="{% url 'employee_list' %}">
+                        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.5"></circle><path d="M3 19c0-2.8 2.8-4.5 6-4.5s6 1.7 6 4.5"></path><path d="M13.8 18.2c.4-1.8 2-3 4.2-3 1 0 1.9.2 2.7.7"></path></svg></span>
+                        <span class="nav-text">Employees</span>
+                    </a>
+                    <a class="nav-link" href="{% url 'report_view' %}">
+                        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 20V9"></path><path d="M12 20V4"></path><path d="M19 20v-7"></path></svg></span>
+                        <span class="nav-text">Reports</span>
+                    </a>
+                {% endif %}
+                <a class="nav-link" href="{% url 'attendance' %}">
+                    <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+                    <span class="nav-text">Attendance</span>
+                </a>
+                <a class="nav-link" href="{% url 'leave_list' %}">
+                    <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 5h10"></path><path d="M6 8h12v11H6z"></path><path d="M9 12h6"></path></svg></span>
+                    <span class="nav-text">Leaves</span>
+                </a>
+                <a class="nav-link" href="{% url 'logout' %}">
+                    <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H4"></path><path d="M12 4h8v16h-8"></path></svg></span>
+                    <span class="nav-text">Logout</span>
+                </a>
+            </nav>
+        </aside>
+    {% endif %}
+
+    <main class="{% if user.is_authenticated %}main-panel{% else %}app-shell{% endif %}">
+        {% if user.is_authenticated %}
+        <header class="topbar">
+            <button type="button" class="icon-btn" id="sidebarToggle" aria-label="Toggle sidebar">&#9776;</button>
+            <div class="topbar-title">Employee Management and Monitoring System</div>
+        </header>
         {% endif %}
 
         {% if messages %}
@@ -350,7 +497,48 @@
         {% endif %}
 
         {% block content %}{% endblock %}
+    </main>
+
+    {% if user.is_authenticated %}
     </div>
+
+    <script>
+        (function () {
+            var sidebar = document.getElementById("sidebar");
+            var toggleBtn = document.getElementById("sidebarToggle");
+            if (!sidebar || !toggleBtn) {
+                return;
+            }
+
+            var mobileQuery = window.matchMedia("(max-width: 960px)");
+
+            function applyDesktopState() {
+                var saved = localStorage.getItem("emms_sidebar_collapsed");
+                if (saved === "1") {
+                    sidebar.classList.add("collapsed");
+                }
+            }
+
+            if (!mobileQuery.matches) {
+                applyDesktopState();
+            }
+
+            toggleBtn.addEventListener("click", function () {
+                if (mobileQuery.matches) {
+                    sidebar.classList.toggle("open");
+                } else {
+                    sidebar.classList.toggle("collapsed");
+                    localStorage.setItem("emms_sidebar_collapsed", sidebar.classList.contains("collapsed") ? "1" : "0");
+                }
+            });
+
+            window.addEventListener("resize", function () {
+                if (!mobileQuery.matches) {
+                    sidebar.classList.remove("open");
+                }
+            });
+        })();
+    </script>
+    {% endif %}
 </body>
 </html>
-
