@@ -201,10 +201,10 @@
 <section class="content-card">
     <h3>Quick Actions</h3>
     <div class="actions">
-        <a href="{% url 'attendance' %}" class="btn">Open Attendance</a>
-        <a href="{% url 'leave_list' %}" class="btn">Review Leaves</a>
-        <a href="{% url 'report_view' %}" class="btn btn-soft">Open Reports</a>
-        <a href="{% url 'export_excel' %}" class="btn btn-soft">Export Excel</a>
+        <a href="{% url 'attendance' %}" class="btn btn-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span>Open Attendance</span></a>
+        <a href="{% url 'leave_list' %}" class="btn btn-icon"><svg viewBox="0 0 24 24"><path d="M7 5h10"></path><path d="M6 8h12v11H6z"></path><path d="M9 12h6"></path></svg><span>Review Leaves</span></a>
+        <a href="{% url 'report_view' %}" class="btn btn-soft btn-icon"><svg viewBox="0 0 24 24"><path d="M5 20V9"></path><path d="M12 20V4"></path><path d="M19 20v-7"></path></svg><span>Open Reports</span></a>
+        <a href="{% url 'export_excel' %}" class="btn btn-soft btn-icon"><svg viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="M8 11l4 4 4-4"></path><path d="M4 20h16"></path></svg><span>Export Excel</span></a>
     </div>
 </section>
 {% else %}
@@ -311,9 +311,9 @@
 <section class="content-card">
     <h3>Quick Actions</h3>
     <div class="actions">
-        <a href="{% url 'attendance' %}" class="btn">Record Attendance</a>
-        <a href="{% url 'leave_add' %}" class="btn">Request Leave</a>
-        <a href="{% url 'leave_list' %}" class="btn btn-soft">View Leave History</a>
+        <a href="{% url 'attendance' %}" class="btn btn-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span>Record Attendance</span></a>
+        <a href="{% url 'leave_add' %}" class="btn btn-icon"><svg viewBox="0 0 24 24"><path d="M7 5h10"></path><path d="M6 8h12v11H6z"></path><path d="M9 12h6"></path></svg><span>Request Leave</span></a>
+        <a href="{% url 'leave_list' %}" class="btn btn-soft btn-icon"><svg viewBox="0 0 24 24"><path d="M5 4h14"></path><path d="M5 8h14"></path><path d="M5 12h14"></path><path d="M5 16h10"></path></svg><span>View Leave History</span></a>
     </div>
 </section>
 {% endif %}
@@ -456,3 +456,4 @@
 })();
 </script>
 {% endblock %}
+

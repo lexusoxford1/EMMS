@@ -3,10 +3,25 @@
 {% block content %}
 <section class="content-card">
     <h2>Employee List</h2>
-    <p class="muted">Manage employee profiles and account assignments.</p>
+    <p class="muted">Manage employee profiles, account assignments, and login access status.</p>
+
     <div class="actions">
         <a href="{% url 'employee_add' %}" class="btn">Add Employee</a>
     </div>
+
+    <form method="get" class="actions" style="margin-top: 10px;">
+        <input
+            type="text"
+            name="employee_id"
+            placeholder="Search by Employee ID"
+            value="{{ employee_id_query }}"
+            aria-label="Search by Employee ID"
+        >
+        <button type="submit" class="btn">Search</button>
+        {% if employee_id_query %}
+            <a href="{% url 'employee_list' %}" class="btn btn-soft">Clear</a>
+        {% endif %}
+    </form>
 
     <div class="table-wrap">
         <table>
@@ -15,6 +30,8 @@
                 <th>Name</th>
                 <th>Department</th>
                 <th>Username</th>
+                <th>Status</th>
+                <th>Access Control</th>
             </tr>
             {% for employee in employees %}
             <tr>
@@ -22,10 +39,27 @@
                 <td>{{ employee.name }}</td>
                 <td>{{ employee.department }}</td>
                 <td>{{ employee.user.username|default:"-" }}</td>
+                <td>
+                    {% if employee.status == "Active" %}
+                        <span class="status completed">Active</span>
+                    {% else %}
+                        <span class="status rejected">Non-Active</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form method="post" action="{% url 'employee_toggle_status' employee.id %}">
+                        {% csrf_token %}
+                        {% if employee.status == "Active" %}
+                            <button type="submit" class="btn btn-soft">Set Non-Active</button>
+                        {% else %}
+                            <button type="submit" class="btn">Set Active</button>
+                        {% endif %}
+                    </form>
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="4">No employees found.</td>
+                <td colspan="6">No employees found.</td>
             </tr>
             {% endfor %}
         </table>
