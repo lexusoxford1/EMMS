@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
-from django.db import transaction
+from django.db import OperationalError, transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -410,8 +410,14 @@ def login_view(request):
 
 
 def logout_view(request):
-    logout(request)
-    return redirect("login")
+    try:
+        logout(request)
+        return redirect("login")
+    except OperationalError:
+        response = redirect("login")
+        response.delete_cookie(settings.SESSION_COOKIE_NAME)
+        response.delete_cookie(settings.CSRF_COOKIE_NAME)
+        return response
 
 
 @login_required
@@ -797,6 +803,47 @@ def attendance_location_history_api(request):
     data = [_serialize_location_log(log) for log in logs[:100]]
     return JsonResponse({"count": len(data), "results": data})
 @login_required
+@require_http_methods(["GET"])
+def filter_attendance_api(request):
+    if request.user.is_superuser:
+        return JsonResponse({"success": False, "error": "Admin accounts cannot use this endpoint."}, status=403)
+
+    employee = get_object_or_404(Employee, user=request.user)
+    search = request.GET.get("search", "").strip()
+    month = request.GET.get("month", "").strip()
+    status = request.GET.get("status", "").strip()
+
+    records = Attendance.objects.filter(employee=employee).order_by("-date")
+
+    if search:
+        records = records.filter(date__icontains=search)
+
+    if month:
+        try:
+            month_number = int(month)
+        except ValueError:
+            return JsonResponse({"success": False, "error": "Month filter must be numeric."}, status=400)
+        records = records.filter(date__month=month_number)
+
+    data = []
+    for record in records[:100]:
+        record_status = record.attendance_status if record.total_hours else "Incomplete"
+        if status and status != record_status:
+            continue
+
+        data.append({
+            "date": record.date.strftime("%Y-%m-%d"),
+            "morning_in": record.morning_in.strftime("%I:%M %p") if record.morning_in else "-",
+            "morning_out": record.morning_out.strftime("%I:%M %p") if record.morning_out else "-",
+            "afternoon_in": record.afternoon_in.strftime("%I:%M %p") if record.afternoon_in else "-",
+            "afternoon_out": record.afternoon_out.strftime("%I:%M %p") if record.afternoon_out else "-",
+            "total_hours": str(record.total_hours),
+            "status": record_status,
+        })
+
+    return JsonResponse({"success": True, "records": data})
+
+@login_required
 @user_passes_test(is_admin)
 def location_tracking_view(request):
     employee_id = request.GET.get("employee_id", "").strip()
@@ -1099,6 +1146,8 @@ def api_docs_view(request):
         "history_endpoint": request.build_absolute_uri("/api/attendance/location-history/"),
     }
     return render(request, "api_docs.html", context)
+
+
 
 
 
