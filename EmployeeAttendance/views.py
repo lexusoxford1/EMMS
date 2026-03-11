@@ -2,14 +2,13 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-
+from django.core.paginator import Paginator
 from openpyxl import Workbook
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-
 from .forms import EmployeeForm, LeaveRequestForm
 from .models import Attendance, Employee, LeaveRequest
 
@@ -310,16 +309,78 @@ def attendance_view(request):
         return redirect("attendance")
 
     today_records = Attendance.objects.filter(date=today).select_related("employee").order_by("employee__name")
-    my_history = Attendance.objects.filter(employee=employee).order_by("-date")
-
+    
+    # Get all history for the employee
+    all_history = Attendance.objects.filter(employee=employee).order_by("-date")
+    
+    # Add pagination - 10 records per page
+    paginator = Paginator(all_history, 10)
+    page_number = request.GET.get('page', 1)
+    my_history = paginator.get_page(page_number)
+    
+    # Calculate summary statistics for the cards
+    today_week = today - timedelta(days=today.weekday())  # Get Monday of current week
+    week_records = Attendance.objects.filter(
+        employee=employee,
+        date__gte=today_week,
+        date__lte=today
+    )
+    
+    # This month records
+    month_records = Attendance.objects.filter(
+        employee=employee,
+        date__year=today.year,
+        date__month=today.month
+    )
+    
+    # Calculate working days in current month (Mon-Fri)
+    def get_working_days_count(year, month):
+        import calendar
+        from datetime import date
+        
+        num_days = calendar.monthrange(year, month)[1]
+        working_days = 0
+        
+        for day in range(1, num_days + 1):
+            check_date = date(year, month, day)
+            if check_date.weekday() < 5:  # Monday=0 to Friday=4
+                working_days += 1
+        
+        return working_days
+    
+    # Calculate counts manually instead of using filter on non-existent field
+    month_overtime = 0
+    month_undertime = 0
+    month_present = 0
+    
+    for record in month_records:
+        # Check if employee was present (has any time in)
+        if record.morning_in or record.afternoon_in:
+            month_present += 1
+        
+        # Check overtime/undertime based on total_hours
+        if hasattr(record, 'total_hours'):
+            if record.total_hours > 8:  # Assuming 8 hours is required
+                month_overtime += 1
+            elif record.total_hours < 8 and record.total_hours > 0:
+                month_undertime += 1
+    
     context = {
         "record": record,
         "today_records": today_records,
         "my_history": my_history,
         "is_admin_view": False,
+        # Summary statistics
+        "week_present": week_records.filter(
+            morning_in__isnull=False
+        ).count(),
+        "week_total": 5,  # Monday to Friday
+        "month_present": month_present,
+        "month_total": get_working_days_count(today.year, today.month),
+        "month_overtime": month_overtime,
+        "late_count": month_undertime,
     }
     return render(request, "attendance.html", context)
-
 
 @login_required
 def leave_list(request):
@@ -481,3 +542,105 @@ def export_pdf(request):
     p.save()
     return response
 
+@login_required
+def filter_attendance_api(request):
+    if request.method == 'GET' and not request.user.is_superuser:
+        try:
+            employee = Employee.objects.get(user=request.user)
+            
+            # Get filter parameters
+            search = request.GET.get('search', '')
+            month = request.GET.get('month', '')
+            status = request.GET.get('status', '')
+            
+            # Start with all records
+            records = Attendance.objects.filter(employee=employee)
+            
+            # Apply filters
+            if search:
+                records = records.filter(date__icontains=search)
+            
+            if month:
+                records = records.filter(date__month=month)
+            
+            # For status filtering, we need to do it in Python since it's not a database field
+            records = records.order_by('-date')[:100]  # Get more records for status filtering
+            
+            # Convert to JSON and apply status filter if needed
+            data = []
+            for record in records:
+                # Calculate status
+                if record.total_hours > 8:
+                    record_status = 'Overtime'
+                elif record.total_hours < 8 and record.total_hours > 0:
+                    record_status = 'Undertime'
+                elif record.total_hours == 8:
+                    record_status = 'Completed'
+                else:
+                    record_status = 'Incomplete'
+                
+                # Apply status filter if provided
+                if status and status != 'All Status' and status != '':
+                    if status != record_status:
+                        continue
+                
+                data.append({
+                    'date': record.date.strftime('%Y-%m-%d'),
+                    'morning_in': record.morning_in.strftime('%I:%M %p') if record.morning_in else '-',
+                    'morning_out': record.morning_out.strftime('%I:%M %p') if record.morning_out else '-',
+                    'afternoon_in': record.afternoon_in.strftime('%I:%M %p') if record.afternoon_in else '-',
+                    'afternoon_out': record.afternoon_out.strftime('%I:%M %p') if record.afternoon_out else '-',
+                    'total_hours': str(record.total_hours),
+                    'status': record_status,
+                })
+            
+            return JsonResponse({'success': True, 'records': data})
+            
+        except Employee.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Employee not found'})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+    if request.method == 'GET' and not request.user.is_superuser:
+        try:
+            employee = Employee.objects.get(user=request.user)
+            
+            # Get filter parameters
+            search = request.GET.get('search', '')
+            month = request.GET.get('month', '')
+            status = request.GET.get('status', '')
+            
+            # Start with all records
+            records = Attendance.objects.filter(employee=employee)
+            
+            # Apply filters
+            if search:
+                records = records.filter(date__icontains=search)
+            
+            if month:
+                records = records.filter(date__month=month)
+            
+            if status and status != 'All Status':
+                records = records.filter(attendance_status=status)
+            
+            # Order by date (newest first)
+            records = records.order_by('-date')[:50]  # Limit to 50 records for performance
+            
+            # Convert to JSON
+            data = []
+            for record in records:
+                data.append({
+                    'date': record.date.strftime('%Y-%m-%d'),
+                    'morning_in': record.morning_in.strftime('%h:%i %p') if record.morning_in else '-',
+                    'morning_out': record.morning_out.strftime('%h:%i %p') if record.morning_out else '-',
+                    'afternoon_in': record.afternoon_in.strftime('%h:%i %p') if record.afternoon_in else '-',
+                    'afternoon_out': record.afternoon_out.strftime('%h:%i %p') if record.afternoon_out else '-',
+                    'total_hours': str(record.total_hours),
+                    'status': record.attendance_status,
+                })
+            
+            return JsonResponse({'success': True, 'records': data})
+            
+        except Employee.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Employee not found'})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
