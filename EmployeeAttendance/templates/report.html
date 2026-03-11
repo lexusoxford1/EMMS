@@ -3,7 +3,7 @@
 {% block content %}
 <section class="content-card">
     <h2>Attendance Report</h2>
-    <p class="muted">Filter by month, then export to Excel or PDF.</p>
+    <p class="muted">Filter by month, then export the attendance report to Excel or PDF.</p>
 
     <form method="get" class="actions">
         <label for="month" class="muted">Select Month</label>
@@ -14,7 +14,10 @@
     <div class="actions">
         <a href="{% url 'export_excel' %}?month={{ request.GET.month }}" class="btn">Export Excel</a>
         <a href="{% url 'export_pdf' %}?month={{ request.GET.month }}" class="btn btn-soft">Export PDF</a>
+
     </div>
+
+    
 
     <div class="table-wrap">
         <table>

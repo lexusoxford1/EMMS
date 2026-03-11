@@ -1,10 +1,12 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 {% if not is_admin_view %}
 <section class="content-card">
     <h2>My Attendance Today</h2>
-    <p class="muted">Use the button below to record your next attendance step.</p>
+    <p class="muted">Use the button below to record your next attendance step with live location tracking.</p>
+    <p class="muted">Your browser will request GPS permission before recording Morning In, Morning Out, Afternoon In, or Afternoon Out.</p>
 
     <div class="table-wrap">
         <table>
@@ -32,23 +34,17 @@
     </div>
 
     <div class="actions">
-        <form method="post">
+        <form method="post" data-attendance-form data-api-url="{% url 'attendance_record_api' %}">
             {% csrf_token %}
-            <button type="submit">
-                {% if not record.morning_in %}
-                    Morning In
-                {% elif not record.morning_out %}
-                    Morning Out
-                {% elif not record.afternoon_in %}
-                    Afternoon In
-                {% elif not record.afternoon_out %}
-                    Afternoon Out
-                {% else %}
-                    Completed
-                {% endif %}
+            <button type="submit" {% if next_step_label == "Completed" %}disabled{% endif %}>
+                {{ next_step_label }}
             </button>
         </form>
     </div>
+    <p class="muted" data-attendance-status aria-live="polite"></p>
+    <noscript>
+        <p class="muted">JavaScript and geolocation access are required to record attendance with location tracking.</p>
+    </noscript>
 </section>
 {% endif %}
 
@@ -90,6 +86,34 @@
 
 {% if not is_admin_view %}
 <section class="content-card">
+    <h2>Recent Location Logs</h2>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Recorded At</th>
+                <th>Attendance Type</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Address</th>
+            </tr>
+            {% for log in my_location_logs %}
+            <tr>
+                <td>{{ log.recorded_at|date:"Y-m-d h:i A" }}</td>
+                <td>{{ log.get_attendance_type_display }}</td>
+                <td>{{ log.latitude }}</td>
+                <td>{{ log.longitude }}</td>
+                <td>{{ log.address|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">No location-tracked attendance logs found yet.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
+
+<section class="content-card">
     <h2>My History</h2>
     <div class="table-wrap">
         <table>
@@ -119,4 +143,8 @@
     </div>
 </section>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/attendance.js' %}" defer></script>
 {% endblock %}

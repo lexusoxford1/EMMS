@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css">
+{% endblock %}
+
+{% block content %}
+<section class="content-card api-docs-hero">
+    <div class="api-docs-hero-copy">
+        <span class="panel-badge admin">Swagger UI + Mermaid Visual Docs</span>
+        <h2>Attendance Location API Documentation</h2>
+        <p class="muted">This admin-side API documentation page includes both Employee Panel APIs and Admin Panel APIs. It uses Swagger UI for structured endpoint documentation and Mermaid for visual workflow diagrams so reviewers can understand the whole system from attendance action to admin monitoring. Authentication is documented as secure protected access for employee and admin roles without exposing raw Django session cookies in the docs UI.</p>
+        <div class="actions">
+            <a href="{{ yaml_url }}" class="btn btn-soft" target="_blank" rel="noopener">Open Raw OpenAPI YAML</a>
+            <a href="{{ history_endpoint }}" class="btn btn-soft" target="_blank" rel="noopener">History Endpoint</a>
+        </div>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>API Coverage</h3>
+    <div class="api-panel-grid">
+        <article class="api-panel-card">
+            <h4>Employee Panel APIs</h4>
+            <p class="muted">Documents the employee attendance flow, geolocation capture, attendance recording, attendance history, recent location logs, and today's attendance state.</p>
+            <ul class="api-panel-list">
+                <li><code>POST /attendance/record-api/</code></li>
+                <li><code>GET /attendance/history/</code></li>
+                <li><code>GET /location/logs/</code></li>
+                <li><code>GET /attendance/today/</code></li>
+            </ul>
+        </article>
+        <article class="api-panel-card">
+            <h4>Admin Panel APIs</h4>
+            <p class="muted">Documents admin attendance monitoring, employee attendance review, location monitoring, filter metadata, and daily location reset behavior.</p>
+            <ul class="api-panel-list">
+                <li><code>GET /admin/attendance-records/</code></li>
+                <li><code>GET /admin/location/logs/</code></li>
+                <li><code>GET /admin/attendance-filters/</code></li>
+                <li><code>GET /admin/employee-attendance/</code></li>
+            </ul>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Visual API Workflow</h3>
+    <p class="muted">The diagram below shows the full attendance system flow from employee action to admin panel monitoring.</p>
+    <div class="api-diagram-shell">
+        <div class="mermaid api-mermaid-diagram">
+flowchart LR
+    employee[Employee Interface] --> morningIn[Morning In]
+    morningIn --> morningOut[Morning Out]
+    morningOut --> afternoonIn[Afternoon In]
+    afternoonIn --> afternoonOut[Afternoon Out]
+    morningIn --> geo[Browser Captures Geolocation]
+    morningOut --> geo
+    afternoonIn --> geo
+    afternoonOut --> geo
+    geo --> frontend[Frontend Sends Request\nfetch + CSRF]
+    frontend --> api[Backend Attendance API]
+    api --> validate[Validate Auth, Payload, Coordinates,\nStrict Attendance Order]
+    validate --> attendance[(Attendance Table)]
+    validate --> location[(AttendanceLocation Table)]
+    attendance --> admin[Admin Panel Monitoring]
+    location --> admin
+    admin --> locationPage[Daily Location Page]
+    admin --> historyApi[Location History API]
+        </div>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>System Workflow</h3>
+    <div class="api-flow-grid">
+        <article class="api-flow-card">
+            <h4>1. Employee performs attendance</h4>
+            <p class="muted">The employee records `Morning In`, `Morning Out`, `Afternoon In`, and `Afternoon Out` in strict sequence from the Attendance page.</p>
+        </article>
+        <article class="api-flow-card">
+            <h4>2. Browser captures location</h4>
+            <p class="muted">Before the request is sent, the browser captures latitude and longitude using `navigator.geolocation`.</p>
+        </article>
+        <article class="api-flow-card">
+            <h4>3. Frontend sends API request</h4>
+            <p class="muted">`attendance.js` submits the attendance payload to the backend through `fetch` with CSRF protection.</p>
+        </article>
+        <article class="api-flow-card">
+            <h4>4. Backend validates data</h4>
+            <p class="muted">Django validates authentication, JSON structure, coordinate limits, and the next valid attendance step.</p>
+        </article>
+        <article class="api-flow-card">
+            <h4>5. Database stores records</h4>
+            <p class="muted">The system updates the daily `Attendance` record and creates a matching `AttendanceLocation` log entry.</p>
+        </article>
+        <article class="api-flow-card">
+            <h4>6. Admin panel monitors output</h4>
+            <p class="muted">Admins review the resulting attendance location records from the daily Location page and the history API.</p>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Documentation Tools</h3>
+    <div class="api-tool-grid">
+        <article class="api-tool-card api-tool-card-active">
+            <h4>Swagger UI</h4>
+            <p class="muted">Integrated now as the main third-party API documentation tool. Best for clearly presenting endpoints, methods, schemas, request examples, response examples, and error cases in a test-friendly layout.</p>
+        </article>
+        <article class="api-tool-card api-tool-card-active">
+            <h4>Mermaid</h4>
+            <p class="muted">Integrated now for the visual system flow diagram that explains how employee actions move through the frontend, backend, database, and admin panel.</p>
+        </article>
+        <article class="api-tool-card">
+            <h4>ReDoc</h4>
+            <p class="muted">A strong alternative for documentation-heavy API browsing when testing controls are less important than schema readability.</p>
+        </article>
+        <article class="api-tool-card">
+            <h4>Postman</h4>
+            <p class="muted">Useful for collections, manual testing, and team sharing when you want to complement the in-app documentation with external test tooling.</p>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <h3>Validation and Access Rules</h3>
+    <div class="api-validation-grid">
+        <article class="api-validation-item"><strong>Authentication:</strong> Protected endpoints require authenticated access. The live web app uses secure Django session-based login, while Swagger documents that access without exposing raw session cookies.</article>
+        <article class="api-validation-item"><strong>Employee access:</strong> Only authenticated employee users can access employee attendance APIs and record their own attendance actions.</article>
+        <article class="api-validation-item"><strong>Admin access:</strong> Only authenticated admin users can access admin monitoring APIs and location monitoring records.</article>
+        <article class="api-validation-item"><strong>Coordinates:</strong> Latitude must be between -90 and 90; longitude must be between -180 and 180.</article>
+        <article class="api-validation-item"><strong>Workflow:</strong> The system only accepts the next valid step in the order Morning In, Morning Out, Afternoon In, Afternoon Out.</article>
+        <article class="api-validation-item"><strong>Payload:</strong> The request body must be valid JSON with latitude and longitude values.</article>
+        <article class="api-validation-item"><strong>History access:</strong> Employees only see their own records; admins can review broader monitoring data.</article>
+    </div>
+</section>
+
+<section class="content-card api-docs-shell">
+    <h3>Swagger UI Reference</h3>
+    <p class="muted">The Swagger UI reference below documents both Employee Panel APIs and Admin Panel APIs, including request body examples, response body examples, required fields, validation behavior, and possible error responses.</p>
+    <div id="swagger-ui" class="api-docs-container swagger-docs-container"></div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-standalone-preset.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        if (window.mermaid) {
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: "base",
+                themeVariables: {
+                    primaryColor: "#e7f4ed",
+                    primaryTextColor: "#173126",
+                    primaryBorderColor: "#176b4d",
+                    lineColor: "#176b4d",
+                    secondaryColor: "#f4f7f2",
+                    tertiaryColor: "#ffffff"
+                }
+            });
+        }
+
+        if (window.SwaggerUIBundle) {
+            var tagPriority = {
+                "Employee APIs": 1,
+                "Admin APIs": 2,
+                "Attendance Records": 3,
+                "Location Logs": 4
+            };
+
+            SwaggerUIBundle({
+                url: "{{ yaml_url|escapejs }}",
+                dom_id: "#swagger-ui",
+                deepLinking: true,
+                displayRequestDuration: true,
+                docExpansion: "list",
+                defaultModelsExpandDepth: 2,
+                defaultModelExpandDepth: 2,
+                filter: true,
+                tryItOutEnabled: false,
+                tagsSorter: function (a, b) {
+                    var aRank = tagPriority[a] || 99;
+                    var bRank = tagPriority[b] || 99;
+
+                    if (aRank === bRank) {
+                        return a.localeCompare(b);
+                    }
+
+                    return aRank - bRank;
+                },
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: "BaseLayout"
+            });
+        }
+    });
+</script>
+{% endblock %}
+
+
+
+

@@ -1,22 +1,390 @@
-from datetime import timedelta
+import json
+from pathlib import Path
+from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
+
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
-from django.http import HttpResponse
+from django.db import transaction
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 
 from openpyxl import Workbook
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .forms import EmployeeForm, LeaveRequestForm
-from .models import Attendance, Employee, LeaveRequest
+from .models import Attendance, AttendanceLocation, Employee, LeaveRequest
 
 
 def is_admin(user):
     return user.is_superuser
+
+
+def _parse_location_payload(request):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None, JsonResponse({"error": "Invalid JSON payload."}, status=400)
+
+    latitude = payload.get("latitude")
+    longitude = payload.get("longitude")
+    address = (payload.get("address") or "").strip()
+
+    if latitude in (None, "") or longitude in (None, ""):
+        return None, JsonResponse({"error": "Latitude and longitude are required."}, status=400)
+
+    try:
+        latitude = Decimal(str(latitude))
+        longitude = Decimal(str(longitude))
+    except (InvalidOperation, ValueError):
+        return None, JsonResponse({"error": "Latitude and longitude must be numeric values."}, status=400)
+
+    if latitude < Decimal("-90") or latitude > Decimal("90"):
+        return None, JsonResponse({"error": "Latitude must be between -90 and 90."}, status=400)
+
+    if longitude < Decimal("-180") or longitude > Decimal("180"):
+        return None, JsonResponse({"error": "Longitude must be between -180 and 180."}, status=400)
+
+    if len(address) > 255:
+        return None, JsonResponse({"error": "Address must be 255 characters or fewer."}, status=400)
+
+    return {
+        "latitude": latitude,
+        "longitude": longitude,
+        "address": address,
+    }, None
+
+
+def _serialize_location_log(log):
+    return {
+        "id": log.id,
+        "employee_id": log.employee.employee_id,
+        "employee_name": log.employee.name,
+        "attendance_date": str(log.attendance.date),
+        "attendance_type": log.attendance_type,
+        "attendance_type_label": log.get_attendance_type_display(),
+        "latitude": float(log.latitude),
+        "longitude": float(log.longitude),
+        "address": log.address,
+        "recorded_at": log.recorded_at.isoformat(),
+    }
+
+
+
+DOCS_YAML_PATH = Path(settings.BASE_DIR) / "docs" / "emms-attendance-api.yaml"
+def _build_api_schema(request):
+    base_url = request.build_absolute_uri("/").rstrip("/")
+
+    return {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "EMMS Attendance Location API",
+            "version": "1.0.0",
+            "description": (
+                "API documentation for the Employee Management and Monitoring System attendance "
+                "location tracking flow. This documentation is rendered through ReDoc using a "
+                "locally served OpenAPI schema, so it demonstrates the full API design without "
+                "requiring any external API key."
+            ),
+        },
+        "servers": [
+            {
+                "url": base_url,
+                "description": "Current Django application host",
+            }
+        ],
+        "tags": [
+            {
+                "name": "Attendance",
+                "description": "Employee attendance recording with strict step validation and GPS capture.",
+            },
+            {
+                "name": "Location History",
+                "description": "Role-based access to recorded attendance location logs.",
+            },
+        ],
+        "paths": {
+            "/api/attendance/record/": {
+                "post": {
+                    "tags": ["Attendance"],
+                    "summary": "Record the next valid attendance step with location",
+                    "security": [{"cookieAuth": []}],
+                    "description": (
+                        "Frontend flow: the browser captures geolocation with navigator.geolocation, "
+                        "then sends latitude, longitude, and optional address to this endpoint. "
+                        "The backend validates the request, determines the next valid step in the "
+                        "sequence Morning In -> Morning Out -> Afternoon In -> Afternoon Out, saves "
+                        "the attendance timestamp, and creates a linked AttendanceLocation record. Authentication is required, and admin accounts are blocked from using this endpoint."
+                    ),
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/AttendanceRecordRequest"},
+                                "examples": {
+                                    "employeeLocation": {
+                                        "summary": "Employee geolocation payload",
+                                        "value": {
+                                            "latitude": 14.5995,
+                                            "longitude": 120.9842,
+                                            "address": "Manila, Philippines",
+                                        },
+                                    }
+                                },
+                            }
+                        },
+                    },
+                    "responses": {
+                        "201": {
+                            "description": "Attendance step recorded and location log saved.",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/AttendanceRecordSuccessResponse"},
+                                    "examples": {
+                                        "morningInSuccess": {
+                                            "summary": "Successful Morning In response",
+                                            "value": {
+                                                "message": "Morning In recorded successfully.",
+                                                "attendance": {
+                                                    "date": "2026-03-11",
+                                                    "attendance_type": "morning_in",
+                                                    "attendance_type_label": "Morning In",
+                                                    "recorded_at": "2026-03-11T08:01:22+08:00",
+                                                    "status": "Undertime",
+                                                    "total_hours": 0,
+                                                },
+                                                "location": {
+                                                    "id": 15,
+                                                    "employee_id": "EMP-0001",
+                                                    "employee_name": "Jane Doe",
+                                                    "attendance_date": "2026-03-11",
+                                                    "attendance_type": "morning_in",
+                                                    "attendance_type_label": "Morning In",
+                                                    "latitude": 14.5995,
+                                                    "longitude": 120.9842,
+                                                    "address": "Manila, Philippines",
+                                                    "recorded_at": "2026-03-11T08:01:22+08:00",
+                                                },
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                        },
+                        "400": {
+                            "description": "Validation failed or the attendance step is not allowed.",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+                                    "examples": {
+                                        "invalidCoordinates": {
+                                            "summary": "Missing coordinates",
+                                            "value": {"error": "Latitude and longitude are required."},
+                                        },
+                                        "alreadyComplete": {
+                                            "summary": "Attendance already complete",
+                                            "value": {"error": "Attendance for today is already complete."},
+                                        },
+                                    },
+                                }
+                            },
+                        },
+                        "403": {
+                            "description": "The authenticated user is not allowed to record attendance.",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+                                    "examples": {
+                                        "adminBlocked": {
+                                            "summary": "Admin account blocked",
+                                            "value": {"error": "Admin accounts cannot record attendance."},
+                                        }
+                                    },
+                                }
+                            },
+                        },
+                    },
+                }
+            },
+            "/api/attendance/location-history/": {
+                "get": {
+                    "tags": ["Location History"],
+                    "summary": "Get attendance location logs",
+                    "security": [{"cookieAuth": []}],
+                    "description": (
+                        "Returns recorded attendance locations. Employees only receive their own logs. "
+                        "Admins can review broader data and optionally filter by employee ID and date. Session authentication is required for access."
+                    ),
+                    "parameters": [
+                        {
+                            "name": "employee_id",
+                            "in": "query",
+                            "required": False,
+                            "schema": {"type": "string", "example": "EMP-0001"},
+                            "description": "Admin-only filter for a specific employee ID.",
+                        },
+                        {
+                            "name": "date",
+                            "in": "query",
+                            "required": False,
+                            "schema": {"type": "string", "format": "date", "example": "2026-03-11"},
+                            "description": "Optional date filter in YYYY-MM-DD format.",
+                        },
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Location history returned successfully.",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/LocationHistoryResponse"},
+                                    "examples": {
+                                        "historySuccess": {
+                                            "summary": "Location history response",
+                                            "value": {
+                                                "count": 1,
+                                                "results": [
+                                                    {
+                                                        "id": 15,
+                                                        "employee_id": "EMP-0001",
+                                                        "employee_name": "Jane Doe",
+                                                        "attendance_date": "2026-03-11",
+                                                        "attendance_type": "morning_in",
+                                                        "attendance_type_label": "Morning In",
+                                                        "latitude": 14.5995,
+                                                        "longitude": 120.9842,
+                                                        "address": "Manila, Philippines",
+                                                        "recorded_at": "2026-03-11T08:01:22+08:00",
+                                                    }
+                                                ],
+                                            },
+                                        }
+                                    },
+                                }
+                            },
+                        },
+                        "400": {
+                            "description": "Invalid query parameter value.",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/ErrorResponse"},
+                                    "examples": {
+                                        "invalidDate": {
+                                            "summary": "Bad date filter",
+                                            "value": {"error": "date must be in YYYY-MM-DD format."},
+                                        }
+                                    },
+                                }
+                            },
+                        },
+                    },
+                }
+            },
+        },
+        "components": {
+            "schemas": {
+                "AttendanceRecordRequest": {
+                    "type": "object",
+                    "required": ["latitude", "longitude"],
+                    "properties": {
+                        "latitude": {
+                            "type": "number",
+                            "format": "float",
+                            "minimum": -90,
+                            "maximum": 90,
+                            "description": "GPS latitude captured from the browser.",
+                        },
+                        "longitude": {
+                            "type": "number",
+                            "format": "float",
+                            "minimum": -180,
+                            "maximum": 180,
+                            "description": "GPS longitude captured from the browser.",
+                        },
+                        "address": {
+                            "type": "string",
+                            "maxLength": 255,
+                            "description": "Optional readable address sent by the client if available.",
+                        },
+                    },
+                },
+                "AttendanceSummary": {
+                    "type": "object",
+                    "properties": {
+                        "date": {"type": "string", "format": "date"},
+                        "attendance_type": {"type": "string", "enum": ["morning_in", "morning_out", "afternoon_in", "afternoon_out"]},
+                        "attendance_type_label": {"type": "string"},
+                        "recorded_at": {"type": "string", "format": "date-time"},
+                        "status": {"type": "string"},
+                        "total_hours": {"type": "number"},
+                    },
+                },
+                "LocationLog": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "integer"},
+                        "employee_id": {"type": "string"},
+                        "employee_name": {"type": "string"},
+                        "attendance_date": {"type": "string", "format": "date"},
+                        "attendance_type": {"type": "string", "enum": ["morning_in", "morning_out", "afternoon_in", "afternoon_out"]},
+                        "attendance_type_label": {"type": "string"},
+                        "latitude": {"type": "number", "format": "float"},
+                        "longitude": {"type": "number", "format": "float"},
+                        "address": {"type": "string"},
+                        "recorded_at": {"type": "string", "format": "date-time"},
+                    },
+                },
+                "AttendanceRecordSuccessResponse": {
+                    "type": "object",
+                    "properties": {
+                        "message": {"type": "string"},
+                        "attendance": {"$ref": "#/components/schemas/AttendanceSummary"},
+                        "location": {"$ref": "#/components/schemas/LocationLog"},
+                    },
+                },
+                "LocationHistoryResponse": {
+                    "type": "object",
+                    "properties": {
+                        "count": {"type": "integer"},
+                        "results": {
+                            "type": "array",
+                            "items": {"$ref": "#/components/schemas/LocationLog"},
+                        },
+                    },
+                },
+                "ErrorResponse": {
+                    "type": "object",
+                    "properties": {
+                        "error": {"type": "string"},
+                    },
+                },
+            }
+        },
+        "x-emms-process-flow": [
+            "Employee opens the Attendance page and clicks the next step button.",
+            "attendance.js requests browser geolocation and sends latitude, longitude, and optional address using fetch with CSRF.",
+            "Django validates authentication, JSON structure, coordinate ranges, and the strict attendance order.",
+            "The Attendance record is updated with the correct timestamp for the next step.",
+            "An AttendanceLocation row is created and linked to both the employee and the attendance record.",
+            "Admin users monitor the resulting logs on the Locations page and through the location history API.",
+        ],
+        "x-emms-validation-rules": [
+            "Session authentication is required.",
+            "Admin accounts cannot use the record attendance endpoint.",
+            "Latitude must be between -90 and 90.",
+            "Longitude must be between -180 and 180.",
+            "Address is optional and limited to 255 characters.",
+            "Attendance steps must follow Morning In, Morning Out, Afternoon In, Afternoon Out.",
+        ],
+    }
 
 
 def login_view(request):
@@ -236,6 +604,9 @@ def dashboard(request):
         "overtime_alerts": overtime_alerts,
         "trend_rows": trend_rows,
         "department_rows": department_rows,
+        "admin_trend_labels": [row["date"].strftime("%b %d") for row in trend_rows],
+        "admin_trend_totals": [row["undertime"] + row["completed"] + row["overtime"] for row in trend_rows],
+        "admin_status_mix": [undertime_count, completed_count, overtime_count],
         "my_total_days": my_total_days,
         "my_total_hours": my_total_hours,
         "my_avg_hours": my_avg_hours,
@@ -245,6 +616,9 @@ def dashboard(request):
         "my_completion_rate": my_completion_rate,
         "my_best_day": my_best_day,
         "my_last7_trend": my_last7_trend,
+        "employee_trend_labels": [row["date"].strftime("%b %d") for row in my_last7_trend],
+        "employee_trend_hours": [row["hours"] for row in my_last7_trend],
+        "employee_status_mix": [my_undertime_days, my_completed_days, my_overtime_days],
     }
     return render(request, "dashboard.html", context)
 
@@ -315,6 +689,7 @@ def attendance_view(request):
             "record": None,
             "today_records": today_records,
             "my_history": [],
+            "my_location_logs": [],
             "is_admin_view": True,
         }
         return render(request, "attendance.html", context)
@@ -324,40 +699,149 @@ def attendance_view(request):
 
     record, created = Attendance.objects.get_or_create(
         employee=employee,
-        date=today
+        date=today,
     )
 
     if request.method == "POST":
-        now = timezone.now()
-
-        if not record.morning_in:
-            record.morning_in = now
-            messages.success(request, "Morning time in recorded")
-        elif not record.morning_out:
-            record.morning_out = now
-            messages.success(request, "Morning time out recorded")
-        elif not record.afternoon_in:
-            record.afternoon_in = now
-            messages.success(request, "Afternoon time in recorded")
-        elif not record.afternoon_out:
-            record.afternoon_out = now
-            messages.success(request, "Afternoon time out recorded")
-        else:
-            messages.warning(request, "Attendance for today is already complete")
-
-        record.save()
+        messages.error(request, "Attendance must now be recorded through the location-tracking API.")
         return redirect("attendance")
 
     today_records = Attendance.objects.filter(date=today).select_related("employee").order_by("employee__name")
     my_history = Attendance.objects.filter(employee=employee).order_by("-date")
+    my_location_logs = AttendanceLocation.objects.filter(employee=employee).select_related("attendance")[:10]
+    next_step_field, next_step_label = Attendance.next_step_for_record(record)
 
     context = {
         "record": record,
         "today_records": today_records,
         "my_history": my_history,
+        "my_location_logs": my_location_logs,
         "is_admin_view": False,
+        "next_step_label": next_step_label or "Completed",
     }
     return render(request, "attendance.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def attendance_record_api(request):
+    if request.user.is_superuser:
+        return JsonResponse({"error": "Admin accounts cannot record attendance."}, status=403)
+
+    payload, error_response = _parse_location_payload(request)
+    if error_response:
+        return error_response
+
+    employee = get_object_or_404(Employee, user=request.user)
+    today = timezone.localdate()
+
+    with transaction.atomic():
+        record, created = Attendance.objects.select_for_update().get_or_create(employee=employee, date=today)
+        field_name, label = Attendance.next_step_for_record(record)
+
+        if not field_name:
+            return JsonResponse({"error": "Attendance for today is already complete."}, status=400)
+
+        recorded_at = timezone.now()
+        setattr(record, field_name, recorded_at)
+        record.save(update_fields=[field_name])
+
+        location_log = AttendanceLocation.objects.create(
+            attendance=record,
+            employee=employee,
+            attendance_type=field_name,
+            latitude=payload["latitude"],
+            longitude=payload["longitude"],
+            address=payload["address"],
+            recorded_at=recorded_at,
+        )
+
+    return JsonResponse(
+        {
+            "message": f"{label} recorded successfully.",
+            "attendance": {
+                "date": str(record.date),
+                "attendance_type": field_name,
+                "attendance_type_label": label,
+                "recorded_at": recorded_at.isoformat(),
+                "status": record.attendance_status,
+                "total_hours": record.total_hours,
+            },
+            "location": _serialize_location_log(location_log),
+        },
+        status=201,
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def attendance_location_history_api(request):
+    logs = AttendanceLocation.objects.select_related("employee", "attendance")
+
+    if request.user.is_superuser:
+        employee_id = request.GET.get("employee_id", "").strip()
+        if employee_id:
+            logs = logs.filter(employee__employee_id__iexact=employee_id)
+    else:
+        employee = get_object_or_404(Employee, user=request.user)
+        logs = logs.filter(employee=employee)
+
+    date_filter = request.GET.get("date", "").strip()
+    if date_filter:
+        try:
+            parsed_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+        except ValueError:
+            return JsonResponse({"error": "date must be in YYYY-MM-DD format."}, status=400)
+        logs = logs.filter(attendance__date=parsed_date)
+
+    data = [_serialize_location_log(log) for log in logs[:100]]
+    return JsonResponse({"count": len(data), "results": data})
+@login_required
+@user_passes_test(is_admin)
+def location_tracking_view(request):
+    employee_id = request.GET.get("employee_id", "").strip()
+    attendance_type = request.GET.get("attendance_type", "").strip()
+    today = timezone.localdate()
+
+    logs = AttendanceLocation.objects.select_related("employee", "attendance").filter(attendance__date=today)
+
+    if employee_id:
+        logs = logs.filter(employee__employee_id__icontains=employee_id)
+
+    valid_attendance_types = {choice[0] for choice in AttendanceLocation.ATTENDANCE_TYPE_CHOICES}
+    if attendance_type:
+        if attendance_type in valid_attendance_types:
+            logs = logs.filter(attendance_type=attendance_type)
+        else:
+            messages.error(request, "Invalid attendance type filter.")
+            attendance_type = ""
+
+    logs = list(logs.order_by("-recorded_at")[:100])
+
+    map_points = [
+        {
+            "employee_id": log.employee.employee_id,
+            "employee_name": log.employee.name,
+            "attendance_type": log.get_attendance_type_display(),
+            "attendance_date": str(log.attendance.date),
+            "recorded_at": log.recorded_at.isoformat(),
+            "latitude": float(log.latitude),
+            "longitude": float(log.longitude),
+            "address": log.address,
+        }
+        for log in logs
+    ]
+
+    context = {
+        "location_logs": logs,
+        "location_map_points": map_points,
+        "employee_id_query": employee_id,
+        "attendance_type_query": attendance_type,
+        "attendance_type_choices": AttendanceLocation.ATTENDANCE_TYPE_CHOICES,
+        "monitoring_date": today,
+        "google_maps_api_key": settings.GOOGLE_MAPS_API_KEY,
+    }
+    return render(request, "location_tracking.html", context)
 
 
 @login_required
@@ -454,17 +938,17 @@ def export_excel(request):
         "Total Hours"
     ])
 
-    for a in attendances:
+    for attendance in attendances:
         ws.append([
-            str(a.date),
-            a.employee.employee_id,
-            a.employee.name,
-            a.employee.department,
-            a.morning_in.strftime("%Y-%m-%d %H:%M:%S") if a.morning_in else "",
-            a.morning_out.strftime("%Y-%m-%d %H:%M:%S") if a.morning_out else "",
-            a.afternoon_in.strftime("%Y-%m-%d %H:%M:%S") if a.afternoon_in else "",
-            a.afternoon_out.strftime("%Y-%m-%d %H:%M:%S") if a.afternoon_out else "",
-            a.total_hours,
+            str(attendance.date),
+            attendance.employee.employee_id,
+            attendance.employee.name,
+            attendance.employee.department,
+            attendance.morning_in.strftime("%Y-%m-%d %H:%M:%S") if attendance.morning_in else "",
+            attendance.morning_out.strftime("%Y-%m-%d %H:%M:%S") if attendance.morning_out else "",
+            attendance.afternoon_in.strftime("%Y-%m-%d %H:%M:%S") if attendance.afternoon_in else "",
+            attendance.afternoon_out.strftime("%Y-%m-%d %H:%M:%S") if attendance.afternoon_out else "",
+            attendance.total_hours,
         ])
 
     response = HttpResponse(
@@ -491,32 +975,131 @@ def export_pdf(request):
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="attendance_report.pdf"'
 
-    p = canvas.Canvas(response, pagesize=letter)
-    width, height = letter
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=landscape(letter),
+        leftMargin=0.45 * inch,
+        rightMargin=0.45 * inch,
+        topMargin=0.5 * inch,
+        bottomMargin=0.45 * inch,
+    )
 
-    y = height - 40
-    p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, y, "Monthly Attendance Report")
-    y -= 30
+    styles = getSampleStyleSheet()
+    title_style = styles["Title"]
+    title_style.fontName = "Helvetica-Bold"
+    title_style.fontSize = 18
+    title_style.leading = 22
+    title_style.textColor = colors.HexColor("#143d2f")
+    title_style.alignment = 0
 
-    p.setFont("Helvetica", 10)
-    for a in attendances:
-        line = (
-            f"{a.date} | {a.employee.employee_id} | {a.employee.name} | "
-            f"AM In: {a.morning_in.strftime('%H:%M') if a.morning_in else '-'} | "
-            f"AM Out: {a.morning_out.strftime('%H:%M') if a.morning_out else '-'} | "
-            f"PM In: {a.afternoon_in.strftime('%H:%M') if a.afternoon_in else '-'} | "
-            f"PM Out: {a.afternoon_out.strftime('%H:%M') if a.afternoon_out else '-'} | "
-            f"Hours: {a.total_hours}"
-        )
-        p.drawString(50, y, line)
-        y -= 20
+    meta_style = styles["BodyText"]
+    meta_style.fontName = "Helvetica"
+    meta_style.fontSize = 9
+    meta_style.leading = 12
+    meta_style.textColor = colors.HexColor("#52635a")
 
-        if y < 50:
-            p.showPage()
-            y = height - 40
-            p.setFont("Helvetica", 10)
+    table_data = [[
+        "Date",
+        "Employee ID",
+        "Name",
+        "Department",
+        "Morning In",
+        "Morning Out",
+        "Afternoon In",
+        "Afternoon Out",
+        "Total Hours",
+    ]]
 
-    p.save()
+    for attendance in attendances:
+        table_data.append([
+            str(attendance.date),
+            attendance.employee.employee_id,
+            attendance.employee.name,
+            attendance.employee.department,
+            attendance.morning_in.strftime("%Y-%m-%d %H:%M:%S") if attendance.morning_in else "-",
+            attendance.morning_out.strftime("%Y-%m-%d %H:%M:%S") if attendance.morning_out else "-",
+            attendance.afternoon_in.strftime("%Y-%m-%d %H:%M:%S") if attendance.afternoon_in else "-",
+            attendance.afternoon_out.strftime("%Y-%m-%d %H:%M:%S") if attendance.afternoon_out else "-",
+            str(attendance.total_hours),
+        ])
+
+    column_widths = [
+        0.75 * inch,
+        0.95 * inch,
+        1.15 * inch,
+        1.05 * inch,
+        1.18 * inch,
+        1.18 * inch,
+        1.18 * inch,
+        1.18 * inch,
+        0.65 * inch,
+    ]
+    scale = doc.width / sum(column_widths)
+    column_widths = [width * scale for width in column_widths]
+
+    report_table = Table(table_data, colWidths=column_widths, repeatRows=1)
+    report_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#176b4d")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("LEADING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, 0), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f7fbf8"), colors.white]),
+        ("TEXTCOLOR", (0, 1), (-1, -1), colors.HexColor("#1e2d25")),
+        ("GRID", (0, 0), (-1, -1), 0.45, colors.HexColor("#d4e1d8")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (-1, 1), (-1, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 1), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+    ]))
+
+    meta_bits = []
+    if month:
+        meta_bits.append(f"Month filter: {month}")
+    meta_bits.append(f"Rows: {len(table_data) - 1}")
+
+    story = [
+        Paragraph("Attendance Report", title_style),
+        Spacer(1, 0.12 * inch),
+        Paragraph(" | ".join(meta_bits), meta_style),
+        Spacer(1, 0.2 * inch),
+        report_table,
+    ]
+
+    doc.build(story)
     return response
+
+@login_required
+@user_passes_test(is_admin)
+def api_schema_view(request):
+    return JsonResponse(_build_api_schema(request), json_dumps_params={"indent": 2})
+
+
+@login_required
+@user_passes_test(is_admin)
+def api_schema_yaml_view(request):
+    if not DOCS_YAML_PATH.exists():
+        return HttpResponse("OpenAPI YAML file not found.", status=404, content_type="text/plain")
+
+    return HttpResponse(DOCS_YAML_PATH.read_text(encoding="utf-8"), content_type="application/yaml")
+
+
+@login_required
+@user_passes_test(is_admin)
+def api_docs_view(request):
+    context = {
+        "schema_url": request.build_absolute_uri("/api/schema/"),
+        "yaml_url": request.build_absolute_uri("/api/schema/yaml/"),
+        "record_endpoint": request.build_absolute_uri("/api/attendance/record/"),
+        "history_endpoint": request.build_absolute_uri("/api/attendance/location-history/"),
+    }
+    return render(request, "api_docs.html", context)
+
+
+
 

@@ -10,7 +10,7 @@ class EmployeeForm(forms.ModelForm):
 
     class Meta:
         model = Employee
-        fields = ["employee_id", "name", "department", "status", "username", "password"]
+        fields = ["name", "department", "status", "username", "password"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,6 +18,7 @@ class EmployeeForm(forms.ModelForm):
 
     def save(self, commit=True):
         employee = super().save(commit=False)
+        employee.employee_id = Employee.generate_employee_id()
 
         username = self.cleaned_data["username"]
         password = self.cleaned_data["password"]
@@ -46,3 +47,5 @@ class LeaveRequestForm(forms.ModelForm):
             "leave_date": forms.DateInput(attrs={"type": "date"}),
             "reason": forms.Textarea(attrs={"rows": 3}),
         }
+
+

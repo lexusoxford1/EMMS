@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
+<div data-dashboard-page data-dashboard-role="{% if user.is_superuser %}admin{% else %}employee{% endif %}">
 {% if user.is_superuser %}
 <section class="content-card">
     <h2>Admin Dashboard Analytics</h2>
@@ -317,143 +319,15 @@
     </div>
 </section>
 {% endif %}
-
-<script>
-(function () {
-    function drawVerticalBarChart(canvasId, labels, values, color) {
-        var canvas = document.getElementById(canvasId);
-        if (!canvas || !labels || !labels.length) {
-            return;
-        }
-
-        var ctx = canvas.getContext("2d");
-        var w = canvas.width;
-        var h = canvas.height;
-        var pad = { top: 16, right: 16, bottom: 46, left: 36 };
-        var chartW = w - pad.left - pad.right;
-        var chartH = h - pad.top - pad.bottom;
-        var maxVal = Math.max.apply(null, values.concat([1]));
-
-        ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, w, h);
-
-        ctx.strokeStyle = "#d9e4dc";
-        ctx.beginPath();
-        ctx.moveTo(pad.left, pad.top);
-        ctx.lineTo(pad.left, h - pad.bottom);
-        ctx.lineTo(w - pad.right, h - pad.bottom);
-        ctx.stroke();
-
-        var bars = labels.length;
-        var slot = chartW / bars;
-        var barW = Math.max(18, slot * 0.56);
-
-        ctx.fillStyle = color || "#176b4d";
-        ctx.font = "12px Segoe UI";
-        ctx.textAlign = "center";
-
-        for (var i = 0; i < bars; i++) {
-            var v = Number(values[i] || 0);
-            var barH = (v / maxVal) * (chartH - 8);
-            var x = pad.left + i * slot + (slot - barW) / 2;
-            var y = h - pad.bottom - barH;
-
-            ctx.fillRect(x, y, barW, barH);
-            ctx.fillStyle = "#1d2a22";
-            ctx.fillText(String(v), x + barW / 2, y - 5);
-            ctx.fillStyle = color || "#176b4d";
-            ctx.fillStyle = "#4f6157";
-            ctx.fillText(labels[i], x + barW / 2, h - pad.bottom + 16);
-            ctx.fillStyle = color || "#176b4d";
-        }
-    }
-
-    function drawPieChart(canvasId, labels, values, colors) {
-        var canvas = document.getElementById(canvasId);
-        if (!canvas || !labels || !labels.length) {
-            return;
-        }
-
-        var ctx = canvas.getContext("2d");
-        var w = canvas.width;
-        var h = canvas.height;
-        var total = values.reduce(function (a, b) { return a + Number(b || 0); }, 0);
-        var cx = w * 0.32;
-        var cy = h * 0.5;
-        var r = Math.min(w, h) * 0.3;
-
-        ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, w, h);
-
-        if (!total) {
-            ctx.fillStyle = "#5a6a61";
-            ctx.font = "14px Segoe UI";
-            ctx.fillText("No data", cx - 22, cy);
-            return;
-        }
-
-        var start = -Math.PI / 2;
-        for (var i = 0; i < values.length; i++) {
-            var v = Number(values[i] || 0);
-            var angle = (v / total) * Math.PI * 2;
-            var end = start + angle;
-
-            ctx.beginPath();
-            ctx.moveTo(cx, cy);
-            ctx.arc(cx, cy, r, start, end);
-            ctx.closePath();
-            ctx.fillStyle = colors[i % colors.length];
-            ctx.fill();
-
-            start = end;
-        }
-
-        ctx.font = "12px Segoe UI";
-        var lx = w * 0.62;
-        var ly = 42;
-        for (var j = 0; j < labels.length; j++) {
-            var value = Number(values[j] || 0);
-            var pct = total ? ((value / total) * 100).toFixed(1) : "0.0";
-            ctx.fillStyle = colors[j % colors.length];
-            ctx.fillRect(lx, ly - 9, 12, 12);
-            ctx.fillStyle = "#1d2a22";
-            ctx.fillText(labels[j] + " (" + value + ", " + pct + "%)", lx + 18, ly);
-            ly += 24;
-        }
-    }
-
-    {% if user.is_superuser %}
-    drawVerticalBarChart(
-        "adminBarChart",
-        [{% for row in trend_rows %}"{{ row.date|date:'M d' }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-        [{% for row in trend_rows %}{{ row.undertime|add:row.completed|add:row.overtime }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-        "#1b7d59"
-    );
-
-    drawPieChart(
-        "adminPieChart",
-        ["Undertime", "Completed", "Overtime"],
-        [{{ undertime_count }}, {{ completed_count }}, {{ overtime_count }}],
-        ["#d35f5f", "#2e8b57", "#2c7bb6"]
-    );
-    {% else %}
-    drawVerticalBarChart(
-        "employeeBarChart",
-        [{% for row in my_last7_trend %}"{{ row.date|date:'M d' }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
-        [{% for row in my_last7_trend %}{{ row.hours }}{% if not forloop.last %}, {% endif %}{% endfor %}],
-        "#176b4d"
-    );
-
-    drawPieChart(
-        "employeePieChart",
-        ["Undertime", "Completed", "Overtime"],
-        [{{ my_undertime_days }}, {{ my_completed_days }}, {{ my_overtime_days }}],
-        ["#d35f5f", "#2e8b57", "#2c7bb6"]
-    );
-    {% endif %}
-})();
-</script>
+</div>
 {% endblock %}
 
+{% block extra_js %}
+{{ admin_trend_labels|json_script:"admin-trend-labels" }}
+{{ admin_trend_totals|json_script:"admin-trend-totals" }}
+{{ admin_status_mix|json_script:"admin-status-mix" }}
+{{ employee_trend_labels|json_script:"employee-trend-labels" }}
+{{ employee_trend_hours|json_script:"employee-trend-hours" }}
+{{ employee_status_mix|json_script:"employee-status-mix" }}
+<script src="{% static 'js/dashboard.js' %}" defer></script>
+{% endblock %}
