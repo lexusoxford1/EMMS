@@ -1,26 +1,40 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="content-card">
-    <h2>Employee List</h2>
-    <p class="muted">Manage employee profiles, account assignments, and login access status.</p>
+<section class="content-card employee-list-card">
+    <div class="employee-toolbar">
+        <div class="employee-intro">
+            <h2>Employee List</h2>
+            <p class="muted">Manage employee profiles, account assignments, and login access status.</p>
+        </div>
 
-    <div class="actions">
-        <a href="{% url 'employee_add' %}" class="btn">Add Employee</a>
+        <div class="employee-toolbar-actions">
+            <a href="{% url 'employee_add' %}" class="btn btn-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+                <span>Add Employee</span>
+            </a>
+        </div>
     </div>
 
-    <form method="get" class="actions" style="margin-top: 10px;">
-        <input
-            type="text"
-            name="employee_id"
-            placeholder="Search by Employee ID"
-            value="{{ employee_id_query }}"
-            aria-label="Search by Employee ID"
-        >
-        <button type="submit" class="btn">Search</button>
-        {% if employee_id_query %}
-            <a href="{% url 'employee_list' %}" class="btn btn-soft">Clear</a>
-        {% endif %}
+    <form method="get" class="employee-search-bar">
+        <div class="filter-field employee-search-field">
+            <span class="filter-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+            </span>
+            <input
+                type="text"
+                name="employee_id"
+                placeholder="Search by Employee ID"
+                value="{{ employee_id_query }}"
+                aria-label="Search by Employee ID"
+            >
+        </div>
+        <div class="employee-search-actions">
+            <button type="submit" class="btn">Search</button>
+            {% if employee_id_query %}
+                <a href="{% url 'employee_list' %}" class="btn btn-soft">Clear</a>
+            {% endif %}
+        </div>
     </form>
 
     <div class="table-wrap">

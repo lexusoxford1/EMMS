@@ -1,7 +1,7 @@
 import re
 
 from django.contrib.auth.models import User
-from django.db import models, transaction
+from django.db import models
 from django.utils import timezone
 
 
@@ -21,7 +21,7 @@ class Employee(models.Model):
 
     @classmethod
     def generate_employee_id(cls):
-        prefix = "EMP"
+        """Create the next sequential EMP-#### identifier."""
         pattern = re.compile(r"^EMP-(\d+)$")
         max_number = 0
 
@@ -30,7 +30,7 @@ class Employee(models.Model):
             if match:
                 max_number = max(max_number, int(match.group(1)))
 
-        return f"{prefix}-{max_number + 1:04d}"
+        return f"EMP-{max_number + 1:04d}"
 
     def __str__(self):
         return f"{self.employee_id} - {self.name}"
@@ -38,6 +38,7 @@ class Employee(models.Model):
 
 class Attendance(models.Model):
     REQUIRED_HOURS = 8
+    OVERTIME_HOURS = 9
     STEP_SEQUENCE = [
         ("morning_in", "Morning In"),
         ("morning_out", "Morning Out"),
@@ -55,6 +56,7 @@ class Attendance(models.Model):
 
     @classmethod
     def next_step_for_record(cls, record):
+        """Return the next valid step in the strict attendance order."""
         for field_name, label in cls.STEP_SEQUENCE:
             if not getattr(record, field_name):
                 return field_name, label
@@ -79,10 +81,18 @@ class Attendance(models.Model):
         return self.morning_hours + self.afternoon_hours
 
     @property
+    def is_undertime(self):
+        return self.total_hours < self.REQUIRED_HOURS
+
+    @property
+    def is_overtime(self):
+        return self.total_hours >= self.OVERTIME_HOURS
+
+    @property
     def attendance_status(self):
-        if self.total_hours < self.REQUIRED_HOURS:
+        if self.is_undertime:
             return "Undertime"
-        if self.total_hours > self.REQUIRED_HOURS:
+        if self.is_overtime:
             return "Overtime"
         return "Completed"
 
@@ -114,7 +124,10 @@ class AttendanceLocation(models.Model):
         ordering = ["-recorded_at"]
 
     def __str__(self):
-        return f"{self.employee.employee_id} - {self.get_attendance_type_display()} - {self.recorded_at:%Y-%m-%d %H:%M:%S}"
+        return (
+            f"{self.employee.employee_id} - {self.get_attendance_type_display()} - "
+            f"{self.recorded_at:%Y-%m-%d %H:%M:%S}"
+        )
 
 
 class LeaveRequest(models.Model):

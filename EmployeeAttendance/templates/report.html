@@ -1,23 +1,33 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="content-card">
-    <h2>Attendance Report</h2>
-    <p class="muted">Filter by month, then export the attendance report to Excel or PDF.</p>
+<section class="content-card report-card">
+    <div class="report-toolbar">
+        <div class="report-intro">
+            <h2>Attendance Report</h2>
+            <p class="muted">Filter by month, then export the attendance report to Excel or PDF.</p>
+        </div>
 
-    <form method="get" class="actions">
-        <label for="month" class="muted">Select Month</label>
-        <input id="month" type="month" name="month" value="{{ request.GET.month }}">
-        <button type="submit">Apply Filter</button>
-    </form>
-
-    <div class="actions">
-        <a href="{% url 'export_excel' %}?month={{ request.GET.month }}" class="btn">Export Excel</a>
-        <a href="{% url 'export_pdf' %}?month={{ request.GET.month }}" class="btn btn-soft">Export PDF</a>
-
+        <form method="get" class="report-filter-bar">
+            <div class="filter-field filter-field-month">
+                <span class="filter-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="3" y="5" width="18" height="16" rx="3"></rect>
+                        <path d="M16 3v4M8 3v4M3 10h18"></path>
+                    </svg>
+                </span>
+                <input id="month" type="month" name="month" value="{{ request.GET.month }}" aria-label="Filter attendance report by month">
+            </div>
+            <div class="filter-actions">
+                <button type="submit">Apply Filter</button>
+            </div>
+        </form>
     </div>
 
-    
+    <div class="actions report-actions">
+        <a href="{% url 'export_excel' %}?month={{ request.GET.month }}" class="btn">Export Excel</a>
+        <a href="{% url 'export_pdf' %}?month={{ request.GET.month }}" class="btn btn-soft">Export PDF</a>
+    </div>
 
     <div class="table-wrap">
         <table>

@@ -5,8 +5,20 @@
 <div data-dashboard-page data-dashboard-role="{% if user.is_superuser %}admin{% else %}employee{% endif %}">
 {% if user.is_superuser %}
 <section class="content-card">
-    <h2>Admin Dashboard Analytics</h2>
-    <p class="muted">Summary of attendance performance, leave movement, and trend patterns.</p>
+    <div class="dashboard-section-heading">
+        <span class="dashboard-section-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+                <path d="M5 19V11"></path>
+                <path d="M12 19V5"></path>
+                <path d="M19 19v-8"></path>
+                <path d="M4 19h16"></path>
+            </svg>
+        </span>
+        <div>
+            <h2>Admin Dashboard Analytics</h2>
+            <p class="muted">Summary of attendance performance, leave movement, and trend patterns.</p>
+        </div>
+    </div>
 
     <div class="stat-grid">
         <article class="stat-item">

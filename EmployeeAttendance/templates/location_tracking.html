@@ -2,12 +2,16 @@
 {% load static %}
 
 {% block content %}
-<section class="content-card">
-    <h2>Location Tracking</h2>
-    <p class="muted">Admin-only daily monitoring for employee attendance locations. This page shows where employees recorded Morning In, Morning Out, Afternoon In, and Afternoon Out today.</p>
-    <p class="muted">Showing location logs for <strong>{{ monitoring_date|date:"F d, Y" }}</strong>. Older records remain saved in the database but are not shown in this daily monitoring view.</p>
+<section class="content-card location-tracking-card">
+    <div class="location-toolbar">
+        <div class="location-intro">
+            <h2>Location Tracking</h2>
+            <p class="muted">Admin-only daily monitoring for employee attendance locations. This page shows where employees recorded Morning In, Morning Out, Afternoon In, and Afternoon Out today.</p>
+            <p class="muted">Showing location logs for <strong>{{ monitoring_date|date:"F d, Y" }}</strong>. Older records remain saved in the database but are not shown in this daily monitoring view.</p>
+        </div>
+    </div>
 
-    <form method="get" class="location-filter-bar" aria-label="Location filters">
+    <form method="get" class="location-filter-bar location-filter-toolbar" aria-label="Location filters">
         <div class="filter-field filter-field-search">
             <span class="filter-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
@@ -33,7 +37,7 @@
             </select>
         </div>
 
-        <div class="filter-actions">
+        <div class="filter-actions location-filter-actions">
             <button type="submit">Apply Filters</button>
             {% if employee_id_query or attendance_type_query %}
                 <a href="{% url 'location_tracking_view' %}" class="btn btn-soft">Clear</a>
@@ -97,8 +101,8 @@
                 <td>{{ log.longitude }}</td>
                 <td>{{ log.address|default:"-" }}</td>
                 <td>
-                    <div class="actions">
-                        <a href="https://www.google.com/maps?q={{ log.latitude }},{{ log.longitude }}" class="btn btn-soft" target="_blank" rel="noopener">View on Google Maps</a>
+                    <div class="location-link-actions">
+                        <a href="https://www.google.com/maps?q={{ log.latitude }},{{ log.longitude }}" class="btn btn-soft" target="_blank" rel="noopener">Google Maps</a>
                         <a href="https://www.openstreetmap.org/?mlat={{ log.latitude }}&amp;mlon={{ log.longitude }}#map=18/{{ log.latitude }}/{{ log.longitude }}" class="btn btn-soft" target="_blank" rel="noopener">OpenStreetMap</a>
                     </div>
                 </td>

@@ -1,10 +1,14 @@
+"""Employee-related form definitions."""
+
 from django import forms
 from django.contrib.auth.models import User
 
-from .models import Employee, LeaveRequest
+from EmployeeAttendance.models import Employee
 
 
 class EmployeeForm(forms.ModelForm):
+    """Create an employee record and its linked Django user in one step."""
+
     username = forms.CharField(max_length=150)
     password = forms.CharField(widget=forms.PasswordInput)
 
@@ -20,16 +24,11 @@ class EmployeeForm(forms.ModelForm):
         employee = super().save(commit=False)
         employee.employee_id = Employee.generate_employee_id()
 
-        username = self.cleaned_data["username"]
-        password = self.cleaned_data["password"]
-        is_active_user = employee.status == Employee.STATUS_ACTIVE
-
         user = User.objects.create_user(
-            username=username,
-            password=password,
-            is_active=is_active_user,
+            username=self.cleaned_data["username"],
+            password=self.cleaned_data["password"],
+            is_active=employee.status == Employee.STATUS_ACTIVE,
         )
-
         employee.user = user
 
         if commit:
@@ -37,15 +36,3 @@ class EmployeeForm(forms.ModelForm):
             employee.save()
 
         return employee
-
-
-class LeaveRequestForm(forms.ModelForm):
-    class Meta:
-        model = LeaveRequest
-        fields = ["leave_date", "reason"]
-        widgets = {
-            "leave_date": forms.DateInput(attrs={"type": "date"}),
-            "reason": forms.Textarea(attrs={"rows": 3}),
-        }
-
-

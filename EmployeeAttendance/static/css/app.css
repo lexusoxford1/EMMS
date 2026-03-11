@@ -259,6 +259,39 @@ button:disabled,
 .content-card p {
     margin: 0 0 12px;
 }
+.dashboard-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.dashboard-section-heading .muted {
+    margin-bottom: 0;
+}
+
+.dashboard-section-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(23, 107, 77, 0.14) 0%, rgba(23, 107, 77, 0.05) 100%);
+    color: var(--accent-strong);
+    border: 1px solid rgba(23, 107, 77, 0.12);
+    flex-shrink: 0;
+}
+
+.dashboard-section-icon svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
 
 .muted {
     color: var(--muted);
@@ -280,6 +313,75 @@ button:disabled,
     align-items: center;
     gap: 12px;
     margin-top: 16px;
+}
+.report-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.report-intro {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+.report-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex: 1 1 360px;
+    margin: 0;
+}
+
+.filter-field-month {
+    flex: 0 1 240px;
+}
+
+.report-actions {
+    justify-content: flex-end;
+}
+.employee-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.employee-intro {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+.employee-toolbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+}
+
+.employee-search-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.employee-search-field {
+    flex: 1 1 420px;
+}
+
+.employee-search-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-left: auto;
 }
 
 .stat-grid {
@@ -570,6 +672,28 @@ code {
     .actions select {
         width: 100%;
     }
+    .report-toolbar,
+    .report-filter-bar {
+        align-items: stretch;
+    }
+
+    .report-filter-bar,
+    .filter-field-month,
+    .report-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+    .employee-toolbar-actions,
+    .employee-search-bar,
+    .employee-search-field,
+    .employee-search-actions {
+        width: 100%;
+    }
+
+    .employee-search-actions {
+        justify-content: stretch;
+        margin-left: 0;
+    }
 
     table {
         min-width: 560px;
@@ -577,6 +701,10 @@ code {
 
     .brand-text h1 {
         font-size: 1.6rem;
+    }
+}
+    .dashboard-section-heading {
+        align-items: flex-start;
     }
 }
 .location-filter-bar {
@@ -638,6 +766,54 @@ code {
     gap: 12px;
     margin-left: auto;
 }
+.location-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.location-intro {
+    flex: 1 1 420px;
+    min-width: 0;
+}
+
+.location-filter-toolbar {
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid rgba(23, 107, 77, 0.08);
+    border-radius: 20px;
+    background: linear-gradient(180deg, #ffffff 0%, var(--panel-soft) 100%);
+}
+
+.location-filter-toolbar .filter-field {
+    margin: 0;
+}
+
+.location-filter-toolbar .filter-field-search {
+    flex: 1.25 1 280px;
+}
+
+.location-filter-toolbar .filter-field-select {
+    flex: 0.95 1 240px;
+}
+
+.location-filter-actions {
+    flex: 0 0 auto;
+}
+
+.location-link-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.location-link-actions .btn {
+    min-width: 150px;
+    justify-content: center;
+}
 
 @media (max-width: 640px) {
     .location-filter-bar {
@@ -656,6 +832,22 @@ code {
 
     .filter-actions {
         justify-content: stretch;
+    }
+}
+    .location-filter-toolbar {
+        padding: 14px;
+    }
+
+    .location-filter-actions,
+    .location-link-actions {
+        width: 100%;
+        margin-left: 0;
+        justify-content: stretch;
+    }
+
+    .location-link-actions .btn {
+        width: 100%;
+        min-width: 0;
     }
 }
 .api-docs-hero {
@@ -1025,3 +1217,7 @@ html {
         border-radius: 14px;
     }
 }
+
+
+
+
