@@ -41,7 +41,6 @@ def parse_location_payload(request):
         "address": address,
     }, None
 
-
 def serialize_location_log(log):
     """Keep API and map payloads consistent wherever location logs are exposed."""
     return {
