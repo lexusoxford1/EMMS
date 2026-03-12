@@ -1,7 +1,10 @@
+"""EMMS urls module."""
+
 from django.urls import path
 
 from . import views
 
+# Group routes by feature so reviewers can scan the surface area quickly.
 urlpatterns = [
     # Authentication and dashboard.
     path("", views.login_view, name="login"),
@@ -36,3 +39,6 @@ urlpatterns = [
     path("reports/excel/", views.export_excel, name="export_excel"),
     path("reports/pdf/", views.export_pdf, name="export_pdf"),
 ]
+
+
+

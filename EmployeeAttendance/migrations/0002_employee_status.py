@@ -1,3 +1,5 @@
+"""Database migration for the EmployeeAttendance app."""
+
 from django.db import migrations, models
 
 
@@ -18,3 +20,4 @@ class Migration(migrations.Migration):
             ),
         ),
     ]
+

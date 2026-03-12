@@ -16,6 +16,7 @@ from EmployeeAttendance.utils.location import parse_location_payload, serialize_
 
 @login_required
 def attendance_view(request):
+    """Render the attendance workspace and preload today's context for the current user."""
     today = timezone.localdate()
     today_records = Attendance.objects.filter(date=today).select_related("employee").order_by("employee__name")
 
@@ -50,9 +51,11 @@ def attendance_view(request):
 @login_required
 @require_http_methods(["POST"])
 def attendance_record_api(request):
+    """Record the next attendance step together with the employee's captured location."""
     if request.user.is_superuser:
         return JsonResponse({"error": "Admin accounts cannot record attendance."}, status=403)
 
+    # Parse and validate the browser payload before touching attendance records.
     payload, error_response = parse_location_payload(request)
     if error_response:
         return error_response
@@ -102,6 +105,7 @@ def attendance_record_api(request):
 @login_required
 @require_http_methods(["GET"])
 def attendance_location_history_api(request):
+    """Return location history, narrowing the dataset based on the caller's role."""
     logs = AttendanceLocation.objects.select_related("employee", "attendance")
 
     if request.user.is_superuser:
@@ -127,6 +131,7 @@ def attendance_location_history_api(request):
 @login_required
 @require_http_methods(["GET"])
 def filter_attendance_api(request):
+    """Provide lightweight filtering for the employee attendance history table."""
     if request.user.is_superuser:
         return JsonResponse({"success": False, "error": "Admin accounts cannot use this endpoint."}, status=403)
 
@@ -165,3 +170,5 @@ def filter_attendance_api(request):
         )
 
     return JsonResponse({"success": True, "records": data})
+
+

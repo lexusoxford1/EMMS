@@ -43,6 +43,7 @@ def get_report_attendances(month):
 
 
 def attach_invalid_month_message(request, invalid_month):
+    """Attach a friendly validation message when the month filter cannot be parsed."""
     if invalid_month:
         messages.error(request, "Invalid month format")
 
@@ -105,6 +106,7 @@ def build_pdf_report_response(attendances, month):
     meta_style.leading = 12
     meta_style.textColor = colors.HexColor("#52635a")
 
+    # Build the table body first so export metadata and row counts stay consistent.
     table_data = [REPORT_COLUMNS]
     for attendance in attendances:
         table_data.append(
@@ -174,3 +176,5 @@ def build_pdf_report_response(attendances, month):
     ]
     document.build(story)
     return response
+
+

@@ -13,6 +13,7 @@ def parse_location_payload(request):
     except (json.JSONDecodeError, UnicodeDecodeError):
         return None, JsonResponse({"error": "Invalid JSON payload."}, status=400)
 
+    # Read the expected geolocation fields and normalize blank addresses to an empty string.
     latitude = payload.get("latitude")
     longitude = payload.get("longitude")
     address = (payload.get("address") or "").strip()
@@ -42,6 +43,7 @@ def parse_location_payload(request):
     }, None
 
 def serialize_location_log(log):
+    """Convert an AttendanceLocation model into a stable API-friendly dictionary."""
     """Keep API and map payloads consistent wherever location logs are exposed."""
     return {
         "id": log.id,
@@ -55,3 +57,5 @@ def serialize_location_log(log):
         "address": log.address,
         "recorded_at": log.recorded_at.isoformat(),
     }
+
+

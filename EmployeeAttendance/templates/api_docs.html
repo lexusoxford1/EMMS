@@ -1,3 +1,4 @@
+<!-- Template: api_docs. This file defines the rendered HTML structure for the corresponding EMMS page. -->
 {% extends "base.html" %}
 
 {% block extra_head %}
@@ -6,12 +7,14 @@
 {% endblock %}
 
 {% block content %}
+<!-- Hero section frames the API docs page and surfaces the primary references. -->
 <section class="content-card api-docs-hero">
     <div class="api-docs-hero-copy">
-        <span class="panel-badge admin">Swagger UI + Mermaid Visual Docs</span>
+        <span class="panel-badge api-docs-badge">Swagger UI + Mermaid Visual Docs</span>
         <h2>Attendance Location API Documentation</h2>
+        <p class="api-docs-hero-intro">Documentation hub for employee attendance APIs, admin monitoring APIs, Swagger reference material, and Mermaid workflow diagrams.</p>
         <p class="muted">This admin-side API documentation page includes both Employee Panel APIs and Admin Panel APIs. It uses Swagger UI for structured endpoint documentation and Mermaid for visual workflow diagrams so reviewers can understand the whole system from attendance action to admin monitoring. Authentication is documented as secure protected access for employee and admin roles without exposing raw Django session cookies in the docs UI.</p>
-        <div class="actions">
+        <div class="actions api-docs-hero-actions">
             <a href="{{ yaml_url }}" class="btn btn-soft" target="_blank" rel="noopener">Open Raw OpenAPI YAML</a>
             <a href="{{ history_endpoint }}" class="btn btn-soft" target="_blank" rel="noopener">History Endpoint</a>
         </div>
@@ -202,6 +205,9 @@ flowchart LR
     });
 </script>
 {% endblock %}
+
+
+
 
 
 

@@ -11,6 +11,7 @@ from EmployeeAttendance.utils.auth import is_admin
 
 @login_required
 def leave_list(request):
+    """Show leave requests, scoped to the current employee unless the caller is an admin."""
     if request.user.is_superuser:
         leaves = LeaveRequest.objects.all().order_by("-created_at")
     else:
@@ -22,6 +23,7 @@ def leave_list(request):
 
 @login_required
 def leave_add(request):
+    """Create a leave request on behalf of the signed-in employee."""
     employee = get_object_or_404(Employee, user=request.user)
     form = LeaveRequestForm(request.POST or None)
 
@@ -38,6 +40,7 @@ def leave_add(request):
 @login_required
 @user_passes_test(is_admin)
 def leave_approve(request, pk):
+    """Mark a leave request as approved from the admin workflow."""
     leave = get_object_or_404(LeaveRequest, pk=pk)
     leave.status = "Approved"
     leave.save()
@@ -48,8 +51,11 @@ def leave_approve(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def leave_reject(request, pk):
+    """Mark a leave request as rejected from the admin workflow."""
     leave = get_object_or_404(LeaveRequest, pk=pk)
     leave.status = "Rejected"
     leave.save()
     messages.success(request, "Leave request rejected")
     return redirect("leave_list")
+
+

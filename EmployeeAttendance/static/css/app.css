@@ -1,3 +1,4 @@
+/* Stylesheet: app. This file defines presentation rules for the associated EMMS interface. */
 :root {
     --bg: #f4f7f2;
     --panel: #ffffff;
@@ -706,7 +707,7 @@ code {
     .dashboard-section-heading {
         align-items: flex-start;
     }
-}
+
 .location-filter-bar {
     display: flex;
     flex-wrap: wrap;
@@ -849,17 +850,79 @@ code {
         width: 100%;
         min-width: 0;
     }
-}
+
+/* API docs hero styles give the page a stronger visual entry point for reviewers. */
 .api-docs-hero {
-    background: linear-gradient(135deg, rgba(23, 107, 77, 0.08) 0%, rgba(23, 107, 77, 0.03) 100%);
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at top right, rgba(52, 133, 96, 0.16), transparent 28%),
+        linear-gradient(135deg, rgba(23, 107, 77, 0.12) 0%, rgba(23, 107, 77, 0.04) 100%);
+}
+
+.api-docs-hero::before {
+    content: "";
+    position: absolute;
+    inset: 18px 18px auto auto;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(23, 107, 77, 0.14), transparent 68%);
+    pointer-events: none;
+}
+
+.api-docs-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border: 1px solid rgba(11, 76, 53, 0.24);
+    background: #176b4d;
+    color: #f7fff9;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.16);
+    box-shadow: 0 12px 30px rgba(23, 107, 77, 0.18);
 }
 
 .api-docs-hero-copy {
-    max-width: 900px;
+    position: relative;
+    max-width: 920px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .api-docs-hero h2 {
-    margin-top: 10px;
+    margin: 0;
+    font-size: clamp(2rem, 3vw, 2.65rem);
+    line-height: 1.08;
+}
+
+.api-docs-hero-intro {
+    max-width: 760px;
+    margin: 0;
+    color: #176b4d;
+    font-size: 1.02rem;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.api-docs-hero .muted {
+    max-width: 980px;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.75;
+    color: #446357;
+}
+
+.api-docs-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-top: 6px;
 }
 
 .api-flow-grid,
@@ -1217,6 +1280,11 @@ html {
         border-radius: 14px;
     }
 }
+
+
+
+
+
 
 
 
