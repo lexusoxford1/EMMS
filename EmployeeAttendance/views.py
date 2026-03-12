@@ -373,7 +373,7 @@ def attendance_view(request):
         
         for day in range(1, num_days + 1):
             check_date = date(year, month, day)
-            if check_date.weekday() < 5: 
+            if check_date.weekday() < 7: 
                 working_days += 1
         
         return working_days
@@ -400,7 +400,7 @@ def attendance_view(request):
         "week_present": week_records.filter(
             morning_in__isnull=False
         ).count(),
-        "week_total": 5,  
+        "week_total": 7,  
         "month_present": month_present,
         "month_total": get_working_days_count(today.year, today.month),
         "month_overtime": month_overtime,
