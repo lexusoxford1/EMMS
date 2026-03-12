@@ -1,277 +1,150 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 {% if not is_admin_view %}
 <section class="content-card">
-    <h2>My Attendance Summary</h2>
-    <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 10px;">
-        <div class="stat-item">
-            <span class="label">This Week</span>
-            <span class="value">{{ week_present }}/{{ week_total }}</span>
-            <small style="color: var(--muted);">days present</small>
-        </div>
-        <div class="stat-item">
-            <span class="label">This Month</span>
-            <span class="value">{{ month_present }}/{{ month_total }}</span>
-            <small style="color: var(--muted);">days present</small>
-        </div>
-        <div class="stat-item">
-            <span class="label">Overtime Days</span>
-            <span class="value">{{ month_overtime }}</span>
-            <small style="color: var(--muted);">this month</small>
-        </div>
-        <div class="stat-item">
-            <span class="label">Undertime Days</span>
-            <span class="value">{{ late_count }}</span>
-            <small style="color: var(--muted);">this month</small>
-        </div>
+    <h2>My Attendance Today</h2>
+    <p class="muted">Use the button below to record your next attendance step with live location tracking.</p>
+    <p class="muted">Your browser will request GPS permission before recording Morning In, Morning Out, Afternoon In, or Afternoon Out.</p>
+
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Morning In</th>
+                <th>Morning Out</th>
+                <th>Afternoon In</th>
+                <th>Afternoon Out</th>
+                <th>Total Hours</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>{{ record.morning_in|date:"Y-m-d h:i A"|default:"-" }}</td>
+                <td>{{ record.morning_out|date:"Y-m-d h:i A"|default:"-" }}</td>
+                <td>{{ record.afternoon_in|date:"Y-m-d h:i A"|default:"-" }}</td>
+                <td>{{ record.afternoon_out|date:"Y-m-d h:i A"|default:"-" }}</td>
+                <td>{{ record.total_hours }}</td>
+                <td>
+                    <span class="status {% if record.attendance_status == 'Completed' %}completed{% elif record.attendance_status == 'Overtime' %}overtime{% else %}undertime{% endif %}">
+                        {{ record.attendance_status }}
+                    </span>
+                </td>
+            </tr>
+        </table>
     </div>
+
+    <div class="actions">
+        <form method="post" data-attendance-form data-api-url="{% url 'attendance_record_api' %}">
+            {% csrf_token %}
+            <button type="submit" {% if next_step_label == "Completed" %}disabled{% endif %}>
+                {{ next_step_label }}
+            </button>
+        </form>
+    </div>
+    <p class="muted" data-attendance-status aria-live="polite"></p>
+    <noscript>
+        <p class="muted">JavaScript and geolocation access are required to record attendance with location tracking.</p>
+    </noscript>
 </section>
 {% endif %}
 
 <section class="content-card">
-    <h2>My Attendance History</h2>
-    
-    <div class="filter-bar" style="background: var(--surface-soft); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
-            <div style="flex: 2; min-width: 200px;">
-                <label style="display: block; font-size: 0.85rem; margin-bottom: 5px; color: var(--muted);">
-                    Search by Date (YYYY-MM-DD)
-                </label>
-                <input type="text" id="searchHistory" placeholder="e.g., 2024-01-15" 
-                       style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 0.95rem;">
-            </div>
-            
-            <div style="flex: 1; min-width: 150px;">
-                <label style="display: block; font-size: 0.85rem; margin-bottom: 5px; color: var(--muted);">
-                    Month
-                </label>
-                <select id="monthFilter" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px;">
-                    <option value="">All Months</option>
-                    <option value="1">January</option>
-                    <option value="2">February</option>
-                    <option value="3">March</option>
-                    <option value="4">April</option>
-                    <option value="5">May</option>
-                    <option value="6">June</option>
-                    <option value="7">July</option>
-                    <option value="8">August</option>
-                    <option value="9">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                </select>
-            </div>
-            
-            <div style="flex: 1; min-width: 150px;">
-                <label style="display: block; font-size: 0.85rem; margin-bottom: 5px; color: var(--muted);">
-                    Status
-                </label>
-                <select id="statusFilter" style="width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px;">
-                    <option value="">All Status</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Overtime">Overtime</option>
-                    <option value="Undertime">Undertime</option>
-                </select>
-            </div>
-            
-            <div style="display: flex; gap: 5px;">
-                <button onclick="applyFilters()" class="btn" style="padding: 10px 20px;">Apply Filters</button>
-                <button onclick="resetFilters()" class="btn btn-soft" style="padding: 10px 20px;">Reset</button>
-                <button onclick="exportFilteredData()" class="btn btn-soft" style="padding: 10px 20px;">Export</button>
-            </div>
-        </div>
-    </div>
-
+    <h2>Today's Attendance Records</h2>
     <div class="table-wrap">
-        <table id="historyTable">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Morning In</th>
-                    <th>Morning Out</th>
-                    <th>Afternoon In</th>
-                    <th>Afternoon Out</th>
-                    <th>Total Hours</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in my_history %}
-                <tr class="history-row" 
-                    data-date="{{ item.date|date:'Y-m-d' }}" 
-                    data-status="{{ item.attendance_status }}"
-                    data-month="{{ item.date|date:'n' }}">
-                    <td>{{ item.date|date:"Y-m-d" }}</td>
-                    <td>{{ item.morning_in|date:"h:i A"|default:"-" }}</td>
-                    <td>{{ item.morning_out|date:"h:i A"|default:"-" }}</td>
-                    <td>{{ item.afternoon_in|date:"h:i A"|default:"-" }}</td>
-                    <td>{{ item.afternoon_out|date:"h:i A"|default:"-" }}</td>
-                    <td>{{ item.total_hours }}</td>
-                    <td>
-                        <span class="status {% if item.attendance_status == 'Completed' %}completed{% elif item.attendance_status == 'Overtime' %}overtime{% else %}undertime{% endif %}">
-                            {{ item.attendance_status }}
-                        </span>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 30px;">
-                        No attendance history found.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Morning In</th>
+                <th>Morning Out</th>
+                <th>Afternoon In</th>
+                <th>Afternoon Out</th>
+                <th>Total Hours</th>
+                <th>Status</th>
+            </tr>
+            {% for item in today_records %}
+            <tr>
+                <td>{{ item.employee.name }}</td>
+                <td>{{ item.morning_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.morning_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.afternoon_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.afternoon_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.total_hours }}</td>
+                <td>
+                    <span class="status {% if item.attendance_status == 'Completed' %}completed{% elif item.attendance_status == 'Overtime' %}overtime{% else %}undertime{% endif %}">
+                        {{ item.attendance_status }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">No attendance records for today.</td>
+            </tr>
+            {% endfor %}
         </table>
     </div>
-    
-    {% if my_history.paginator.num_pages > 1 %}
-    <div class="pagination" style="margin-top: 20px; display: flex; justify-content: center; gap: 10px; align-items: center;">
-        {% if my_history.has_previous %}
-            <a href="?page=1" class="btn btn-soft">« First</a>
-            <a href="?page={{ my_history.previous_page_number }}" class="btn btn-soft">Previous</a>
-        {% endif %}
-        
-        <span style="padding: 8px 15px; background: var(--surface-soft); border-radius: 8px;">
-            Page {{ my_history.number }} of {{ my_history.paginator.num_pages }}
-        </span>
-        
-        {% if my_history.has_next %}
-            <a href="?page={{ my_history.next_page_number }}" class="btn btn-soft">Next</a>
-            <a href="?page={{ my_history.paginator.num_pages }}" class="btn btn-soft">Last »</a>
-        {% endif %}
-    </div>
-    {% endif %}
 </section>
 
 {% if not is_admin_view %}
-<script>
-function applyFilters() {
-    const searchTerm = document.getElementById('searchHistory').value.toLowerCase();
-    const monthFilter = document.getElementById('monthFilter').value;
-    const statusFilter = document.getElementById('statusFilter').value;
-    const rows = document.querySelectorAll('.history-row');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
-        const date = row.getAttribute('data-date');
-        const status = row.getAttribute('data-status');
-        const month = row.getAttribute('data-month');
-        let show = true;
-        
-        if (searchTerm && !date.includes(searchTerm)) {
-            show = false;
-        }
-        
-        if (monthFilter && month !== monthFilter) {
-            show = false;
-        }
-        
-        if (statusFilter && status !== statusFilter) {
-            show = false;
-        }
-        
-        row.style.display = show ? '' : 'none';
-        if (show) visibleCount++;
-    });
-    
-    const table = document.getElementById('historyTable');
-    let noResultsRow = document.getElementById('noResultsRow');
-    
-    if (visibleCount === 0) {
-        if (!noResultsRow) {
-            noResultsRow = table.insertRow(-1);
-            noResultsRow.id = 'noResultsRow';
-            const cell = noResultsRow.insertCell(0);
-            cell.colSpan = 7;
-            cell.style.textAlign = 'center';
-            cell.style.padding = '30px';
-            cell.innerHTML = 'No records match your filters.';
-        }
-    } else if (noResultsRow) {
-        noResultsRow.remove();
-    }
-}
+<section class="content-card">
+    <h2>Recent Location Logs</h2>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Recorded At</th>
+                <th>Attendance Type</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Address</th>
+            </tr>
+            {% for log in my_location_logs %}
+            <tr>
+                <td>{{ log.recorded_at|date:"Y-m-d h:i A" }}</td>
+                <td>{{ log.get_attendance_type_display }}</td>
+                <td>{{ log.latitude }}</td>
+                <td>{{ log.longitude }}</td>
+                <td>{{ log.address|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">No location-tracked attendance logs found yet.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
 
-function resetFilters() {
-    document.getElementById('searchHistory').value = '';
-    document.getElementById('monthFilter').value = '';
-    document.getElementById('statusFilter').value = '';
-    
-    document.querySelectorAll('.history-row').forEach(row => {
-        row.style.display = '';
-    });
-    
-    const noResultsRow = document.getElementById('noResultsRow');
-    if (noResultsRow) noResultsRow.remove();
-}
-
-function exportFilteredData() {
-    const visibleRows = [];
-    document.querySelectorAll('.history-row:not([style*="display: none"])').forEach(row => {
-        visibleRows.push({
-            date: row.cells[0].textContent,
-            morning_in: row.cells[1].textContent,
-            morning_out: row.cells[2].textContent,
-            afternoon_in: row.cells[3].textContent,
-            afternoon_out: row.cells[4].textContent,
-            total_hours: row.cells[5].textContent,
-            status: row.cells[6].textContent.trim()
-        });
-    });
-    
-    if (visibleRows.length === 0) {
-        alert('No records to export');
-        return;
-    }
-    
-    const headers = ['Date', 'Morning In', 'Morning Out', 'Afternoon In', 'Afternoon Out', 'Total Hours', 'Status'];
-    const csvRows = [];
-    csvRows.push(headers.join(','));
-    
-    visibleRows.forEach(row => {
-        const values = Object.values(row).map(val => `"${val}"`);
-        csvRows.push(values.join(','));
-    });
-    
-    const csv = csvRows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `attendance_history_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-}
-
-document.getElementById('searchHistory').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        applyFilters();
-    }
-});
-</script>
-
-<style>
-.filter-bar input:focus, .filter-bar select:focus {
-    outline: none;
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 2px rgba(23, 107, 77, 0.1);
-}
-
-.pagination .btn {
-    padding: 8px 12px;
-    font-size: 0.9rem;
-}
-
-@media (max-width: 768px) {
-    .filter-bar > div {
-        flex-direction: column;
-    }
-    
-    .filter-bar > div > div {
-        width: 100%;
-    }
-}
-</style>
+<section class="content-card">
+    <h2>My History</h2>
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Morning In</th>
+                <th>Morning Out</th>
+                <th>Afternoon In</th>
+                <th>Afternoon Out</th>
+                <th>Total Hours</th>
+            </tr>
+            {% for item in my_history %}
+            <tr>
+                <td>{{ item.date }}</td>
+                <td>{{ item.morning_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.morning_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.afternoon_in|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.afternoon_out|date:"h:i A"|default:"-" }}</td>
+                <td>{{ item.total_hours }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No attendance history found.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/attendance.js' %}" defer></script>
 {% endblock %}

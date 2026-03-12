@@ -1,0 +1,871 @@
+openapi: 3.0.3
+info:
+  title: EMMS Attendance and Location Monitoring API
+  version: 1.0.0
+  description: |
+    OpenAPI documentation for the Employee Management and Monitoring System (EMMS).
+
+    This specification documents the attendance and location-tracking workflow from the Employee Panel
+    through to the Admin Panel monitoring experience. It is designed to be ready for SwaggerHub import
+    and to support Swagger UI presentation.
+
+    Process overview:
+    1. Employee logs in to the system.
+    2. Employee opens the attendance page.
+    3. Employee records attendance in strict order: Morning In, Morning Out, Afternoon In, Afternoon Out.
+    4. The browser captures geolocation before attendance is submitted.
+    5. The frontend sends the request to the backend API.
+    6. The backend validates authentication, payload structure, coordinates, and the next valid attendance step.
+    7. The system stores attendance and location data in the database.
+    8. The employee can review attendance history and recent location logs.
+    9. The admin monitors daily attendance and location activity from the Admin Panel.
+
+    Notes:
+    - Paths marked with `x-emms-implementation-status: documented-only` are included for documentation completeness
+      and SwaggerHub review even if a matching route is not yet implemented in the Django project.
+    - The live Django project currently exposes `/api/attendance/record/` and `/api/attendance/location-history/`.
+    - Authentication is session-based in the live web application and is documented in this specification through a secure documentation-oriented sessionAuth scheme.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local Django development server
+  - url: /
+    description: Relative application root
+tags:
+  - name: Employee APIs
+    description: Employee-facing APIs for recording attendance and reviewing personal records.
+  - name: Admin APIs
+    description: Admin-facing APIs for monitoring attendance records and location activity.
+  - name: Location Logs
+    description: Endpoints and schemas related to captured attendance location data.
+  - name: Attendance Records
+    description: Endpoints and schemas related to employee attendance records and workflow state.
+paths:
+  /api/attendance/record/:
+    post:
+      tags:
+        - Employee APIs
+        - Attendance Records
+        - Location Logs
+      summary: Record the next valid attendance step with geolocation
+      description: |
+        Records the next required attendance action for the authenticated employee.
+
+        Employee workflow:
+        - The employee opens the Attendance page.
+        - The browser captures geolocation before submission.
+        - The frontend sends latitude, longitude, and optional address to the backend.
+        - The backend determines the next valid step automatically.
+        - The system stores both the attendance timestamp and a linked location log.
+
+        Business rules:
+        - Attendance must follow this exact order: Morning In, Morning Out, Afternoon In, Afternoon Out.
+        - Employees cannot skip steps.
+        - The backend determines the next valid attendance action.
+        - Geolocation must be captured before attendance is recorded.
+        - Admin accounts cannot use this endpoint.
+        - Only authenticated employee users can access this protected endpoint.
+      operationId: recordAttendanceWithLocation
+      security:
+        - sessionAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/AttendanceRecordRequest'
+      responses:
+        '201':
+          description: Attendance step recorded successfully and location log saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceRecordResponse'
+              examples:
+                morningInSuccess:
+                  summary: Morning In recorded successfully
+                  description: Cleanly formatted success response with separate attendance and location sections.
+                  value:
+                    message: Morning In recorded successfully.
+                    attendance:
+                      date: '2026-03-11'
+                      attendance_type: morning_in
+                      attendance_type_label: Morning In
+                      recorded_at: '2026-03-11T08:01:22+08:00'
+                      status: Undertime
+                      total_hours: 0
+                    location:
+                      id: 15
+                      employee_id: EMP-0001
+                      employee_name: Jane Doe
+                      attendance_date: '2026-03-11'
+                      attendance_type: morning_in
+                      attendance_type_label: Morning In
+                      latitude: 14.599500
+                      longitude: 120.984200
+                      address: Manila, Philippines
+                      recorded_at: '2026-03-11T08:01:22+08:00'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+  /attendance/record-api/:
+    post:
+      tags:
+        - Employee APIs
+        - Attendance Records
+        - Location Logs
+      summary: Documentation alias for employee attendance recording
+      description: |
+        Documentation-focused alias requested for SwaggerHub import and system review.
+
+        This path describes the same attendance-recording process as the live Django endpoint
+        `/api/attendance/record/`.
+      operationId: recordAttendanceWithLocationAlias
+      x-emms-implementation-status: documented-only
+      security:
+        - sessionAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/AttendanceRecordRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/AttendanceRecordedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+  /api/attendance/location-history/:
+    get:
+      tags:
+        - Employee APIs
+        - Admin APIs
+        - Location Logs
+      summary: Get attendance location history
+      description: |
+        Returns attendance location logs.
+
+        Role behavior:
+        - Employees receive only their own location logs.
+        - Admins can review broader results and may filter by employee ID and date.
+
+        Admin monitoring use case:
+        - Review where employees performed Morning In, Morning Out, Afternoon In, and Afternoon Out.
+        - Older records remain stored in the database for historical purposes.
+        - Only authenticated users can access these protected records.
+      operationId: getAttendanceLocationHistory
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmployeeIdQuery'
+        - $ref: '#/components/parameters/DateQuery'
+      responses:
+        '200':
+          description: Location history returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationLogListResponse'
+              examples:
+                locationHistory:
+                  summary: Employee location log history
+                  value:
+                    count: 2
+                    results:
+                      - id: 15
+                        employee_id: EMP-0001
+                        employee_name: Jane Doe
+                        attendance_date: '2026-03-11'
+                        attendance_type: morning_in
+                        attendance_type_label: Morning In
+                        latitude: 14.5995
+                        longitude: 120.9842
+                        address: Manila, Philippines
+                        recorded_at: '2026-03-11T08:01:22+08:00'
+                      - id: 16
+                        employee_id: EMP-0001
+                        employee_name: Jane Doe
+                        attendance_date: '2026-03-11'
+                        attendance_type: morning_out
+                        attendance_type_label: Morning Out
+                        latitude: 14.5997
+                        longitude: 120.9844
+                        address: Manila, Philippines
+                        recorded_at: '2026-03-11T12:02:10+08:00'
+        '400':
+          $ref: '#/components/responses/BadRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+  /attendance/history/:
+    get:
+      tags:
+        - Employee APIs
+        - Attendance Records
+      summary: Get employee attendance history
+      description: |
+        Returns the authenticated employee's attendance history.
+
+        Employee Panel use case:
+        - Review past attendance records.
+        - Confirm which stages have been completed for each day.
+        - Compare total hours and daily attendance status.
+      operationId: getEmployeeAttendanceHistory
+      x-emms-implementation-status: documented-only
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Employee attendance history returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceHistoryResponse'
+              examples:
+                history:
+                  summary: Employee attendance history
+                  value:
+                    count: 2
+                    results:
+                      - date: '2026-03-11'
+                        employee:
+                          employee_id: EMP-0001
+                          name: Jane Doe
+                          department: HR
+                        morning_in: '2026-03-11T08:01:22+08:00'
+                        morning_out: '2026-03-11T12:02:10+08:00'
+                        afternoon_in: '2026-03-11T13:01:03+08:00'
+                        afternoon_out: '2026-03-11T17:08:55+08:00'
+                        total_hours: 8
+                        status: Completed
+                        next_action: null
+                      - date: '2026-03-10'
+                        employee:
+                          employee_id: EMP-0001
+                          name: Jane Doe
+                          department: HR
+                        morning_in: '2026-03-10T08:00:00+08:00'
+                        morning_out: '2026-03-10T12:00:00+08:00'
+                        afternoon_in: '2026-03-10T13:00:00+08:00'
+                        afternoon_out: '2026-03-10T17:00:00+08:00'
+                        total_hours: 8
+                        status: Completed
+                        next_action: null
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+  /location/logs/:
+    get:
+      tags:
+        - Employee APIs
+        - Location Logs
+      summary: Get recent employee location logs
+      description: |
+        Returns recent location logs for the authenticated employee.
+
+        Each location log stores:
+        - latitude
+        - longitude
+        - address (optional)
+        - timestamp
+        - attendance type
+      operationId: getEmployeeLocationLogs
+      x-emms-implementation-status: documented-only
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Recent location logs returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationLogListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+  /attendance/today/:
+    get:
+      tags:
+        - Employee APIs
+        - Attendance Records
+      summary: Get today's attendance record for the authenticated employee
+      description: |
+        Returns today's attendance record together with the next valid attendance action.
+
+        This endpoint is useful for driving the Employee Panel attendance card and button state.
+      operationId: getEmployeeAttendanceToday
+      x-emms-implementation-status: documented-only
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Today's attendance record returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceTodayResponse'
+              examples:
+                todayRecord:
+                  value:
+                    date: '2026-03-11'
+                    employee:
+                      employee_id: EMP-0001
+                      name: Jane Doe
+                      department: HR
+                    morning_in: '2026-03-11T08:01:22+08:00'
+                    morning_out: null
+                    afternoon_in: null
+                    afternoon_out: null
+                    total_hours: 0
+                    status: Undertime
+                    next_action: Morning Out
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+  /admin/attendance-records/:
+    get:
+      tags:
+        - Admin APIs
+        - Attendance Records
+      summary: Get admin attendance records for monitoring
+      description: |
+        Returns attendance records for admin monitoring.
+
+        Admin Panel use case:
+        - View employee attendance records.
+        - Review Morning In, Morning Out, Afternoon In, and Afternoon Out state.
+        - Filter by date or attendance stage.
+        - Only authenticated admin users can access this monitoring endpoint.
+      operationId: getAdminAttendanceRecords
+      x-emms-implementation-status: documented-only
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DateQuery'
+        - $ref: '#/components/parameters/AttendanceTypeQuery'
+      responses:
+        '200':
+          description: Admin attendance records returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAttendanceRecordListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/AdminOnlyResponse'
+  /admin/location/logs/:
+    get:
+      tags:
+        - Admin APIs
+        - Location Logs
+      summary: Get admin location monitoring logs
+      description: |
+        Returns location logs for the Admin Panel monitoring page.
+
+        Business rules:
+        - The monitoring page shows daily records only.
+        - The monitoring view resets every day.
+        - Historical records remain stored in the database for reporting and audit purposes.
+        - Only authenticated admin users can access this monitoring endpoint.
+      operationId: getAdminLocationLogs
+      x-emms-implementation-status: documented-only
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmployeeIdQuery'
+        - $ref: '#/components/parameters/AttendanceTypeQuery'
+      responses:
+        '200':
+          description: Daily admin location logs returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminLocationMonitoringResponse'
+              examples:
+                dailyLogs:
+                  summary: Admin daily location monitoring
+                  value:
+                    monitoring_date: '2026-03-11'
+                    count: 2
+                    results:
+                      - id: 15
+                        employee_id: EMP-0001
+                        employee_name: Jane Doe
+                        attendance_date: '2026-03-11'
+                        attendance_type: morning_in
+                        attendance_type_label: Morning In
+                        latitude: 14.5995
+                        longitude: 120.9842
+                        address: Manila, Philippines
+                        recorded_at: '2026-03-11T08:01:22+08:00'
+                      - id: 16
+                        employee_id: EMP-0002
+                        employee_name: John Smith
+                        attendance_date: '2026-03-11'
+                        attendance_type: morning_out
+                        attendance_type_label: Morning Out
+                        latitude: 14.6101
+                        longitude: 121.0001
+                        address: Quezon City, Philippines
+                        recorded_at: '2026-03-11T12:01:10+08:00'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/AdminOnlyResponse'
+  /admin/attendance-filters/:
+    get:
+      tags:
+        - Admin APIs
+        - Attendance Records
+      summary: Get admin filter metadata for attendance stages
+      description: |
+        Returns filter options used by the Admin Panel attendance and location monitoring screens.
+
+        This endpoint is restricted to authenticated admin users.
+
+        The returned options should support consistent filtering across all attendance stages:
+        - Morning In
+        - Morning Out
+        - Afternoon In
+        - Afternoon Out
+      operationId: getAdminAttendanceFilters
+      x-emms-implementation-status: documented-only
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Admin filter metadata returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAttendanceFiltersResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/AdminOnlyResponse'
+  /admin/employee-attendance/:
+    get:
+      tags:
+        - Admin APIs
+        - Attendance Records
+      summary: Get employee attendance summary for admin review
+      description: |
+        Returns employee attendance summaries for the Admin Panel.
+
+        This endpoint is intended for authenticated admin review and reporting use cases where the admin needs to compare
+        employee attendance behavior across the current monitoring period.
+      operationId: getAdminEmployeeAttendance
+      x-emms-implementation-status: documented-only
+      security:
+        - sessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EmployeeIdQuery'
+        - $ref: '#/components/parameters/DateQuery'
+      responses:
+        '200':
+          description: Employee attendance summaries returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAttendanceRecordListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/AdminOnlyResponse'
+components:
+  securitySchemes:
+    sessionAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Session Login
+      description: |
+        Documentation-friendly representation of the secure authentication used by EMMS.
+
+        In the live Django application, users authenticate through the login form and the server manages
+        the authenticated session. Swagger UI documents protected access without requiring raw session
+        cookies to be entered manually.
+
+        Access rules:
+        - Employee Panel APIs require an authenticated employee session.
+        - Admin Panel APIs require an authenticated admin session.
+        - Attendance and location monitoring data are protected and available only to authorized users.
+  parameters:
+    EmployeeIdQuery:
+      name: employee_id
+      in: query
+      required: false
+      description: Filter by employee ID.
+      schema:
+        type: string
+        example: EMP-0001
+    DateQuery:
+      name: date
+      in: query
+      required: false
+      description: Filter records by date in YYYY-MM-DD format.
+      schema:
+        type: string
+        format: date
+        example: '2026-03-11'
+    AttendanceTypeQuery:
+      name: attendance_type
+      in: query
+      required: false
+      description: Filter by attendance stage.
+      schema:
+        type: string
+        enum:
+          - morning_in
+          - morning_out
+          - afternoon_in
+          - afternoon_out
+        example: morning_in
+  requestBodies:
+    AttendanceRecordRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AttendanceRecordInput'
+          examples:
+            morningInRequest:
+              summary: Employee geolocation request
+              value:
+                latitude: 14.5995
+                longitude: 120.9842
+                address: Manila, Philippines
+  responses:
+    AttendanceRecordedResponse:
+      description: Attendance step recorded successfully.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AttendanceRecordResponse'
+    BadRequestResponse:
+      description: Validation failed or the request could not be processed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            missingCoordinates:
+              value:
+                error: Latitude and longitude are required.
+            invalidJson:
+              value:
+                error: Invalid JSON payload.
+            completedDay:
+              value:
+                error: Attendance for today is already complete.
+            invalidDate:
+              value:
+                error: date must be in YYYY-MM-DD format.
+    UnauthorizedResponse:
+      description: Authentication is required for protected employee or admin endpoints.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Authentication is required to access this protected endpoint.
+    ForbiddenResponse:
+      description: The authenticated user does not have the required permission for this action.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            adminBlocked:
+              value:
+                error: Admin accounts cannot record attendance.
+    AdminOnlyResponse:
+      description: Admin access is required for protected monitoring endpoints.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: Admin access is required for this endpoint.
+  schemas:
+    EmployeeSummary:
+      type: object
+      required:
+        - employee_id
+        - name
+        - department
+      properties:
+        employee_id:
+          type: string
+          description: Unique employee identifier.
+          example: EMP-0001
+        name:
+          type: string
+          description: Employee full name.
+          example: Jane Doe
+        department:
+          type: string
+          description: Employee department.
+          example: HR
+    AttendanceRecordInput:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: float
+          minimum: -90
+          maximum: 90
+          description: GPS latitude captured before attendance submission.
+          example: 14.5995
+        longitude:
+          type: number
+          format: float
+          minimum: -180
+          maximum: 180
+          description: GPS longitude captured before attendance submission.
+          example: 120.9842
+        address:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: Optional readable address captured or resolved by the client.
+          example: Manila, Philippines
+    AttendanceWorkflowState:
+      type: string
+      enum:
+        - morning_in
+        - morning_out
+        - afternoon_in
+        - afternoon_out
+      description: Valid attendance step identifiers.
+    AttendanceSummary:
+      type: object
+      description: Structured attendance details returned after the backend records the next valid attendance step.
+      required:
+        - date
+        - attendance_type
+        - attendance_type_label
+        - recorded_at
+        - status
+        - total_hours
+      properties:
+        date:
+          type: string
+          format: date
+          example: '2026-03-11'
+        attendance_type:
+          $ref: '#/components/schemas/AttendanceWorkflowState'
+        attendance_type_label:
+          type: string
+          example: Morning In
+        recorded_at:
+          type: string
+          format: date-time
+          example: '2026-03-11T08:01:22+08:00'
+        status:
+          type: string
+          example: Undertime
+        total_hours:
+          type: number
+          example: 0
+    AttendanceRecord:
+      type: object
+      required:
+        - date
+        - employee
+        - total_hours
+        - status
+      properties:
+        date:
+          type: string
+          format: date
+        employee:
+          $ref: '#/components/schemas/EmployeeSummary'
+        morning_in:
+          type: string
+          format: date-time
+          nullable: true
+        morning_out:
+          type: string
+          format: date-time
+          nullable: true
+        afternoon_in:
+          type: string
+          format: date-time
+          nullable: true
+        afternoon_out:
+          type: string
+          format: date-time
+          nullable: true
+        total_hours:
+          type: number
+          example: 8
+        status:
+          type: string
+          example: Completed
+        next_action:
+          type: string
+          nullable: true
+          example: Morning Out
+    LocationLog:
+      type: object
+      description: Structured location log details captured for a specific attendance action.
+      required:
+        - id
+        - employee_id
+        - employee_name
+        - attendance_date
+        - attendance_type
+        - attendance_type_label
+        - latitude
+        - longitude
+        - recorded_at
+      properties:
+        id:
+          type: integer
+          example: 15
+        employee_id:
+          type: string
+          example: EMP-0001
+        employee_name:
+          type: string
+          example: Jane Doe
+        attendance_date:
+          type: string
+          format: date
+          example: '2026-03-11'
+        attendance_type:
+          $ref: '#/components/schemas/AttendanceWorkflowState'
+        attendance_type_label:
+          type: string
+          example: Morning In
+        latitude:
+          type: number
+          format: float
+          example: 14.5995
+        longitude:
+          type: number
+          format: float
+          example: 120.9842
+        address:
+          type: string
+          nullable: true
+          example: Manila, Philippines
+        recorded_at:
+          type: string
+          format: date-time
+          example: '2026-03-11T08:01:22+08:00'
+    AttendanceRecordResponse:
+      type: object
+      required:
+        - message
+        - attendance
+        - location
+      properties:
+        message:
+          type: string
+          description: Human-readable success message for the recorded attendance step.
+          example: Morning In recorded successfully.
+        attendance:
+          description: Attendance information saved for the current step.
+          $ref: '#/components/schemas/AttendanceSummary'
+        location:
+          description: Location log information captured and stored for the same attendance action.
+          $ref: '#/components/schemas/LocationLog'
+    AttendanceTodayResponse:
+      allOf:
+        - $ref: '#/components/schemas/AttendanceRecord'
+    AttendanceHistoryResponse:
+      type: object
+      required:
+        - count
+        - results
+      properties:
+        count:
+          type: integer
+          example: 2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceRecord'
+    LocationLogListResponse:
+      type: object
+      required:
+        - count
+        - results
+      properties:
+        count:
+          type: integer
+          example: 2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationLog'
+    AdminAttendanceRecordListResponse:
+      type: object
+      required:
+        - count
+        - results
+      properties:
+        count:
+          type: integer
+          example: 25
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceRecord'
+    AdminLocationMonitoringResponse:
+      type: object
+      required:
+        - monitoring_date
+        - count
+        - results
+      properties:
+        monitoring_date:
+          type: string
+          format: date
+          description: Daily monitoring date shown in the admin location view.
+          example: '2026-03-11'
+        count:
+          type: integer
+          example: 12
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationLog'
+    AdminAttendanceFiltersResponse:
+      type: object
+      required:
+        - attendance_types
+        - rules
+      properties:
+        attendance_types:
+          type: array
+          items:
+            type: object
+            required:
+              - value
+              - label
+            properties:
+              value:
+                type: string
+                example: morning_in
+              label:
+                type: string
+                example: Morning In
+        rules:
+          type: array
+          items:
+            type: string
+          example:
+            - Attendance must follow Morning In, Morning Out, Afternoon In, Afternoon Out.
+            - Admin filters must display attendance records consistently across all attendance stages.
+            - The admin monitoring view resets daily while history remains stored.
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: Latitude and longitude are required.
+
+
+
