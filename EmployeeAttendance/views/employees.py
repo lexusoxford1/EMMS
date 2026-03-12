@@ -12,6 +12,7 @@ from EmployeeAttendance.utils.auth import is_admin
 @login_required
 @user_passes_test(is_admin)
 def employee_list(request):
+    """Show the admin employee directory with an optional employee ID search."""
     employee_id_query = request.GET.get("employee_id", "").strip()
     employees = Employee.objects.select_related("user").order_by("employee_id")
 
@@ -28,6 +29,7 @@ def employee_list(request):
 @login_required
 @user_passes_test(is_admin)
 def employee_add(request):
+    """Create a new employee profile and its linked Django user account."""
     form = EmployeeForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -40,6 +42,7 @@ def employee_add(request):
 @login_required
 @user_passes_test(is_admin)
 def employee_toggle_status(request, pk):
+    """Toggle whether an employee and their linked user can sign in."""
     if request.method != "POST":
         return redirect("employee_list")
 
@@ -59,3 +62,5 @@ def employee_toggle_status(request, pk):
 
     messages.success(request, message)
     return redirect("employee_list")
+
+

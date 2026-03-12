@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Base directory is reused by templates, static files, docs, and the SQLite database.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -31,6 +32,7 @@ ALLOWED_HOSTS = []
 
 # Application definition
 
+# Register Django defaults plus the project's employee attendance app.
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -118,6 +120,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Read the Google Maps API key from the environment so secrets stay out of source control.
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
 
 # Default primary key field type
@@ -138,3 +141,7 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_SSL_REDIRECT = not DEBUG
+
+
+
+

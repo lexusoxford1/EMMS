@@ -17,10 +17,12 @@ class EmployeeForm(forms.ModelForm):
         fields = ["name", "department", "status", "username", "password"]
 
     def __init__(self, *args, **kwargs):
+        """Swap the default status widget for an explicit select input."""
         super().__init__(*args, **kwargs)
         self.fields["status"].widget = forms.Select(choices=Employee.STATUS_CHOICES)
 
     def save(self, commit=True):
+        """Create both the employee row and its linked Django auth user."""
         employee = super().save(commit=False)
         employee.employee_id = Employee.generate_employee_id()
 
@@ -36,3 +38,5 @@ class EmployeeForm(forms.ModelForm):
             employee.save()
 
         return employee
+
+

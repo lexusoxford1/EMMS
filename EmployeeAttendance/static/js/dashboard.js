@@ -1,4 +1,6 @@
+// Script: dashboard. This file renders lightweight dashboard charts from server-provided JSON.
 (function () {
+    // Safely parse JSON that Django injected into the page for chart datasets.
     function readJsonScript(id) {
         var node = document.getElementById(id);
         if (!node) {
@@ -12,6 +14,7 @@
         }
     }
 
+    // Draw the compact vertical bar chart used for attendance trends.
     function drawVerticalBarChart(canvasId, labels, values, color) {
         var canvas = document.getElementById(canvasId);
         if (!canvas || !labels || !labels.length) {
@@ -60,6 +63,7 @@
         }
     }
 
+    // Draw the status mix pie chart for admin and employee dashboards.
     function drawPieChart(canvasId, labels, values, colors) {
         var canvas = document.getElementById(canvasId);
         if (!canvas || !labels || !labels.length) {
@@ -117,6 +121,7 @@
         }
     }
 
+    // Switch between the admin and employee chart sets based on page metadata.
     function initializeDashboardCharts() {
         var page = document.querySelector("[data-dashboard-page]");
         if (!page) {

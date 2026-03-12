@@ -1,8 +1,10 @@
+<!-- Template: attendance. This file defines the rendered HTML structure for the corresponding EMMS page. -->
 {% extends "base.html" %}
 {% load static %}
 
 {% block content %}
 {% if not is_admin_view %}
+<!-- Attendance page combines the next-step action, today's summary, and history tables. -->
 <section class="content-card">
     <h2>My Attendance Today</h2>
     <p class="muted">Use the button below to record your next attendance step with live location tracking.</p>
@@ -85,6 +87,7 @@
 </section>
 
 {% if not is_admin_view %}
+<!-- Attendance page combines the next-step action, today's summary, and history tables. -->
 <section class="content-card">
     <h2>Recent Location Logs</h2>
     <div class="table-wrap">
@@ -148,3 +151,7 @@
 {% block extra_js %}
 <script src="{% static 'js/attendance.js' %}" defer></script>
 {% endblock %}
+
+
+
+

@@ -1,3 +1,5 @@
+"""EMMS tests module."""
+
 import json
 from decimal import Decimal
 
@@ -10,7 +12,9 @@ from .models import Attendance, AttendanceLocation, Employee
 
 
 class AttendanceLocationApiTests(TestCase):
+    """API tests covering the employee attendance recording and history flow."""
     def setUp(self):
+        """Create a logged-in employee used by the attendance API test scenarios."""
         self.password = "testpass123"
         self.user = User.objects.create_user(username="employee", password=self.password)
         self.employee = Employee.objects.create(
@@ -130,7 +134,9 @@ class AttendanceLocationApiTests(TestCase):
 
 
 class AttendanceLocationAdminHistoryTests(TestCase):
+    """Admin-side tests for reviewing attendance location history filters."""
     def setUp(self):
+        """Create a logged-in employee used by the attendance API test scenarios."""
         self.password = "adminpass123"
         self.admin = User.objects.create_superuser(username="admin", password=self.password, email="admin@example.com")
         self.employee_user = User.objects.create_user(username="staff", password="staffpass123")
@@ -167,3 +173,8 @@ class AttendanceLocationAdminHistoryTests(TestCase):
         payload = response.json()
         self.assertEqual(payload["count"], 1)
         self.assertEqual(payload["results"][0]["employee_name"], self.employee.name)
+
+
+
+
+

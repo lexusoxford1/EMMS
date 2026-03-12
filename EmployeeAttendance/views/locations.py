@@ -13,6 +13,7 @@ from EmployeeAttendance.utils.auth import is_admin
 @login_required
 @user_passes_test(is_admin)
 def location_tracking_view(request):
+    """Render today's location monitoring map and filtered log table for admins."""
     employee_id = request.GET.get("employee_id", "").strip()
     attendance_type = request.GET.get("attendance_type", "").strip()
     today = timezone.localdate()
@@ -29,7 +30,9 @@ def location_tracking_view(request):
             messages.error(request, "Invalid attendance type filter.")
             attendance_type = ""
 
+    # Limit the monitoring view to the most recent rows so the page stays responsive.
     logs = list(logs.order_by("-recorded_at")[:100])
+    # Serialize only the fields the Google Maps view needs.
     map_points = [
         {
             "employee_id": log.employee.employee_id,
@@ -54,3 +57,5 @@ def location_tracking_view(request):
         "google_maps_api_key": settings.GOOGLE_MAPS_API_KEY,
     }
     return render(request, "location_tracking.html", context)
+
+

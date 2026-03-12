@@ -1,3 +1,4 @@
+/* Stylesheet: login. This file defines presentation rules for the associated EMMS interface. */
 :root {
     --bg: #eef5f1;
     --surface: #ffffff;
@@ -87,3 +88,4 @@ button {
 button:hover {
     background: var(--primary-hover);
 }
+

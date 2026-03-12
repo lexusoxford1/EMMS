@@ -1,3 +1,4 @@
+<!-- Template: base. This file defines the rendered HTML structure for the corresponding EMMS page. -->
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -9,6 +10,7 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <!-- Authenticated layout wraps the sidebar, topbar, and the shared content region. -->
     {% if user.is_authenticated %}
     <div class="app-layout">
         <aside class="sidebar" id="sidebar">
@@ -24,6 +26,7 @@
                 {% if user.is_superuser %}Admin Panel{% else %}Employee Panel{% endif %}
             </span>
 
+            <!-- Sidebar navigation changes slightly depending on the signed-in role. -->
             <nav class="sidebar-nav">
                 <a class="nav-link" href="{% url 'dashboard' %}">
                     <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12l9-8 9 8"></path><path d="M5 10v10h14V10"></path></svg></span>
@@ -71,6 +74,7 @@
         </header>
         {% endif %}
 
+        <!-- Global flash messages surface validation, success, and workflow feedback. -->
         {% if messages %}
             {% for message in messages %}
                 <div class="msg">{{ message }}</div>
@@ -92,6 +96,11 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+
+
+
+
+
 
 
 

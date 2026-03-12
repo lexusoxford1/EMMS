@@ -5,6 +5,7 @@ import sys
 
 
 def main():
+    """Delegate management commands to Django's command-line executor."""
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'emms.settings')
     try:
@@ -20,3 +21,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+

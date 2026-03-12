@@ -1,4 +1,6 @@
+// Script: location_tracking. This file renders Google Maps markers from server-provided JSON.
 (function () {
+    // Build the map only when both the DOM container and Google Maps API are ready.
     function initializeGoogleLocationMap() {
         var dataNode = document.getElementById("location-map-points");
         var mapNode = document.getElementById("attendanceLocationMap");
@@ -58,6 +60,7 @@
         }
     }
 
+    // Expose the initializer so the Google Maps callback can invoke it.
     window.initAttendanceLocationMap = initializeGoogleLocationMap;
 
     document.addEventListener("DOMContentLoaded", function () {

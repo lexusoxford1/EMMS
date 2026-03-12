@@ -26,10 +26,8 @@ info:
     - The live Django project currently exposes `/api/attendance/record/` and `/api/attendance/location-history/`.
     - Authentication is session-based in the live web application and is documented in this specification through a secure documentation-oriented sessionAuth scheme.
 servers:
-  - url: http://127.0.0.1:8000
-    description: Local Django development server
   - url: /
-    description: Relative application root
+    description: Current application root
 tags:
   - name: Employee APIs
     description: Employee-facing APIs for recording attendance and reviewing personal records.
@@ -866,6 +864,7 @@ components:
         error:
           type: string
           example: Latitude and longitude are required.
+
 
 
 

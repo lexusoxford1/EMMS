@@ -1,3 +1,5 @@
+"""EMMS models module."""
+
 import re
 
 from django.contrib.auth.models import User
@@ -6,6 +8,7 @@ from django.utils import timezone
 
 
 class Employee(models.Model):
+    """Employee profile linked to the Django user used for login."""
     STATUS_ACTIVE = "Active"
     STATUS_NON_ACTIVE = "Non-Active"
     STATUS_CHOICES = [
@@ -37,6 +40,7 @@ class Employee(models.Model):
 
 
 class Attendance(models.Model):
+    """Daily attendance record that stores each required check-in/check-out timestamp."""
     REQUIRED_HOURS = 8
     OVERTIME_HOURS = 9
     STEP_SEQUENCE = [
@@ -78,6 +82,7 @@ class Attendance(models.Model):
 
     @property
     def total_hours(self):
+        """Return the combined hours for the morning and afternoon sessions."""
         return self.morning_hours + self.afternoon_hours
 
     @property
@@ -101,6 +106,7 @@ class Attendance(models.Model):
 
 
 class AttendanceLocation(models.Model):
+    """Immutable location log captured for a single attendance action."""
     TYPE_MORNING_IN = "morning_in"
     TYPE_MORNING_OUT = "morning_out"
     TYPE_AFTERNOON_IN = "afternoon_in"
@@ -131,6 +137,7 @@ class AttendanceLocation(models.Model):
 
 
 class LeaveRequest(models.Model):
+    """Employee-submitted leave request that admins can approve or reject."""
     STATUS_CHOICES = [
         ("Pending", "Pending"),
         ("Approved", "Approved"),
@@ -145,3 +152,6 @@ class LeaveRequest(models.Model):
 
     def __str__(self):
         return f"{self.employee.name} - {self.leave_date} - {self.status}"
+
+
+

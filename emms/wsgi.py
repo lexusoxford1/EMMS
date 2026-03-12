@@ -11,6 +11,9 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
+# Point the WSGI entrypoint at the shared project settings module.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'emms.settings')
 
 application = get_wsgi_application()
+
+

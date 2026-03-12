@@ -1,4 +1,6 @@
+// Script: attendance. This file handles geolocation capture and attendance API submission.
 (function () {
+    // Read Django's CSRF cookie so the fetch request is accepted by the server.
     function getCookie(name) {
         var cookieValue = null;
         if (!document.cookie) {
@@ -16,6 +18,7 @@
         return cookieValue;
     }
 
+    // Reuse the same status element for success and error feedback.
     function setStatus(message, isError) {
         var statusNode = document.querySelector("[data-attendance-status]");
         if (!statusNode) {
@@ -25,6 +28,7 @@
         statusNode.style.color = isError ? "#8f2626" : "#176b4d";
     }
 
+    // Wrap the browser geolocation API in a promise so the submit flow stays readable.
     function requestCurrentPosition() {
         return new Promise(function (resolve, reject) {
             if (!navigator.geolocation) {
@@ -52,6 +56,7 @@
         });
     }
 
+    // Drive the full attendance submission workflow from the page form.
     function initializeAttendanceRecorder() {
         var form = document.querySelector("[data-attendance-form]");
         if (!form) {

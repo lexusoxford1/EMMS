@@ -1,3 +1,4 @@
+<!-- Template: location_tracking. This file defines the rendered HTML structure for the corresponding EMMS page. -->
 {% extends "base.html" %}
 {% load static %}
 
@@ -79,6 +80,7 @@
     </div>
 </section>
 
+<!-- Location monitoring pairs the filter toolbar, live map, and tabular log review. -->
 <section class="content-card">
     <h3>Today's Location Logs</h3>
     <div class="table-wrap">
@@ -124,3 +126,6 @@
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initAttendanceLocationMap" async defer></script>
 {% endif %}
 {% endblock %}
+
+
+

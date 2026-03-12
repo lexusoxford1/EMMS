@@ -52,6 +52,7 @@ def build_dashboard_context(user):
     completed_percent = round((completed_count / divisor) * 100, 1) if present_today else 0
     overtime_percent = round((overtime_count / divisor) * 100, 1) if present_today else 0
 
+    # Highlight the most urgent undertime and overtime records for the admin cards.
     undertime_alerts = sorted(
         [record for record in today_records if record.is_undertime],
         key=lambda item: item.total_hours,
@@ -62,6 +63,7 @@ def build_dashboard_context(user):
         reverse=True,
     )[:5]
 
+    # Build a seven-day summary so charts can render without extra work in templates.
     trend_rows = []
     for days_ago in range(6, -1, -1):
         trend_date = today - timedelta(days=days_ago)
@@ -87,6 +89,7 @@ def build_dashboard_context(user):
             }
         )
 
+    # Aggregate department metrics for the admin comparison table.
     department_map = {}
     for attendance in today_records:
         department_name = attendance.employee.department or "Unassigned"
@@ -133,6 +136,7 @@ def build_dashboard_context(user):
     my_best_day = None
     my_last7_trend = []
 
+    # Employee dashboards get a personal trend summary instead of the admin-wide aggregates.
     if employee:
         my_month_records = list(
             Attendance.objects.filter(
@@ -211,3 +215,5 @@ def build_dashboard_context(user):
         "employee_trend_hours": [row["hours"] for row in my_last7_trend],
         "employee_status_mix": [my_undertime_days, my_completed_days, my_overtime_days],
     }
+
+

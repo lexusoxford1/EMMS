@@ -9,6 +9,7 @@ from django.shortcuts import redirect, render
 
 
 def login_view(request):
+    """Authenticate a user and route them to the dashboard when credentials are valid."""
     if request.user.is_authenticated:
         return redirect("dashboard")
 
@@ -21,6 +22,7 @@ def login_view(request):
             login(request, user)
             return redirect("dashboard")
 
+        # Distinguish bad credentials from a disabled account so the feedback is actionable.
         existing_user = User.objects.filter(username=username).first()
         if existing_user and existing_user.check_password(password) and not existing_user.is_active:
             messages.error(request, "Your account is non-active. Please contact your administrator.")
@@ -40,3 +42,5 @@ def logout_view(request):
         response.delete_cookie(settings.SESSION_COOKIE_NAME)
         response.delete_cookie(settings.CSRF_COOKIE_NAME)
         return response
+
+

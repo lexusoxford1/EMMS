@@ -1,4 +1,6 @@
+// Script: app. This file contains the client-side behavior for the shared authenticated layout.
 (function () {
+    // Restore and toggle the sidebar state for desktop and mobile layouts.
     function initializeSidebarToggle() {
         var sidebar = document.getElementById("sidebar");
         var toggleBtn = document.getElementById("sidebarToggle");
@@ -40,6 +42,7 @@
         });
     }
 
+    // Show a floating button once the user has scrolled far enough down the page.
     function initializeScrollTopButton() {
         var button = document.getElementById("scrollTopBtn");
         var mainPanel = document.querySelector(".main-panel, .app-shell");
