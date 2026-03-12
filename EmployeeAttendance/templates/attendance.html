@@ -97,7 +97,6 @@
                 <th>Attendance Type</th>
                 <th>Latitude</th>
                 <th>Longitude</th>
-                <th>Address</th>
             </tr>
             {% for log in my_location_logs %}
             <tr>
@@ -105,11 +104,10 @@
                 <td>{{ log.get_attendance_type_display }}</td>
                 <td>{{ log.latitude }}</td>
                 <td>{{ log.longitude }}</td>
-                <td>{{ log.address|default:"-" }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5">No location-tracked attendance logs found yet.</td>
+                <td colspan="4">No location-tracked attendance logs found yet.</td>
             </tr>
             {% endfor %}
         </table>
@@ -151,6 +149,7 @@
 {% block extra_js %}
 <script src="{% static 'js/attendance.js' %}" defer></script>
 {% endblock %}
+
 
 
 
